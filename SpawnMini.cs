@@ -19,6 +19,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission("spawnmini.mini", this);
             permission.RegisterPermission("spawnmini.nocd", this);
             permission.RegisterPermission("spawnmini.nomini", this);
+
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile("SpawnMini"))
             {
                 dataFile = Interface.Oxide.DataFileSystem.GetDatafile("SpawnMini");
