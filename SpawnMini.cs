@@ -9,16 +9,22 @@ using UnityEngine;
 namespace Oxide.Plugins
 {
     [Info("SpawnMini", "Spooks © 2020", 1.0), Description("Spawn a mini!")]
-    class SpawnMini : CovalencePlugin
+    class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
         private SaveData data;
 
+        private readonly string _spawnMini = "spawnmini.mini";
+        private readonly string _noCooldown = "spawnmini.nocd";
+        private readonly string _noMini = "spawnmini.nomini";
+
         private void Loaded()
         {
-            permission.RegisterPermission("spawnmini.mini", this);
-            permission.RegisterPermission("spawnmini.nocd", this);
-            permission.RegisterPermission("spawnmini.nomini", this);
+            Puts("Loaded");
+            /* EDIT PERMISSIONS HERE */
+            permission.RegisterPermission(_spawnMini, this);
+            permission.RegisterPermission(_noCooldown, this);
+            permission.RegisterPermission(_noMini, this);
 
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile("SpawnMini"))
             {
@@ -26,12 +32,11 @@ namespace Oxide.Plugins
                 dataFile.Save();
             }
             data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>("SpawnMini");
-            Subscribe(nameof(OnEntityKill));
-            Subscribe(nameof(OnServerShutdown));
         }
 
         void Unload()
         {
+            Puts("Unloaded");
             Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", data);
         }
 
@@ -54,25 +59,25 @@ namespace Oxide.Plugins
             }
         }
 
-        [Command("mini")]
-        void GiveMini(IPlayer player, string command, string[] args)
+        [ChatCommand("mini")]
+        void GiveMini(BasePlayer player, string command, string[] args)
         {
-            if (!player.HasPermission("spawnmini.mini"))
+            if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
-                player.Reply("You do not have permission to spawn a minicopter!");
+                player.ChatMessage("You do not have permission to spawn a minicopter!");
             }
             else
             {
-                if (data.playerMini.ContainsKey(player.Id))
+                if (data.playerMini.ContainsKey(player.UserIDString))
                 {
-                    player.Reply("You already have a minicopter!");
+                    player.ChatMessage("You already have a minicopter!");
                 }
-                else if (data.cooldown.ContainsKey(player.Id) && !player.HasPermission("spawnmini.nocd"))
+                else if (data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
-                    var cooldown = data.cooldown[player.Id];
-                    player.Reply($"You have {Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)} minutes until your cooldown ends");
+                    var cooldown = data.cooldown[player.UserIDString];
+                    player.ChatMessage($"You have {Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)} minutes until your cooldown ends");
                 }
-                else if (!data.playerMini.ContainsKey(player.Id) && player.HasPermission("spawnmini.nocd"))
+                else if (!data.playerMini.ContainsKey(player.UserIDString) && permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
                     SpawnMinicopter(player);
                 }
@@ -83,61 +88,59 @@ namespace Oxide.Plugins
             }
         }
 
-        [Command("nomini")]
-        void NoMini(IPlayer player, string command, string[] args)
+        [ChatCommand("nomini")]
+        void NoMini(BasePlayer player, string command, string[] args)
         {
-            if (!player.HasPermission("spawnmini.nomini"))
+            if (!permission.UserHasPermission(player.UserIDString, _noMini))
             {
-                player.Reply("You do not have permission to use this command!");
+                player.ChatMessage("You do not have permission to use this command!");
             }
             else
             {
-                if (!data.playerMini.ContainsKey(player.Id))
+                if (!data.playerMini.ContainsKey(player.UserIDString))
                 {
-                    player.Reply("You do not have a minicopter!");
+                    player.ChatMessage("You do not have a minicopter!");
                 }
                 else
                 {
-                    BaseNetworkable.serverEntities.Find(data.playerMini[player.Id]).Kill();
+                    BaseNetworkable.serverEntities.Find(data.playerMini[player.UserIDString]).Kill();
                     SpawnMinicopter(player);
                 }
             }
         }
 
-        private void SpawnMinicopter(IPlayer player)
+        private void SpawnMinicopter(BasePlayer player)
         {
-            string miniPrefab= "assets/content/vehicles/minicopter/minicopter.entity.prefab";
+            string miniPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab";
 
-            BasePlayer p = BasePlayer.FindByID(ulong.Parse(player.Id));
-
-            if (!p.IsBuildingBlocked())
+            if (!player.IsBuildingBlocked())
             {
                 // https://umod.org/plugins/my-mini-copter
-                Vector3 forward = p.GetNetworkRotation() * Vector3.forward;
+                Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
                 Vector3 straight = Vector3.Cross(Vector3.Cross(Vector3.up, forward), Vector3.up).normalized;
-                Vector3 position = p.transform.position + straight * 5f;
-                position.y = p.transform.position.y + 2.5f;
+                Vector3 position = player.transform.position + straight * 5f;
+                position.y = player.transform.position.y + 2.5f;
                 BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(miniPrefab, position, new Quaternion());
                 BaseEntity miniEntity = vehicleMini as BaseEntity;
-                miniEntity.OwnerID = p.userID;
+                miniEntity.OwnerID = player.userID;
                 vehicleMini.Spawn();
                 // End
 
-                data.playerMini.Add(p.UserIDString, vehicleMini.net.ID);
+                data.playerMini.Add(player.UserIDString, vehicleMini.net.ID);
 
                 DateTime now = DateTime.Now;
-                if (!player.HasPermission("spawnmini.nocd"))
+                if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
-                    data.cooldown.Add(p.UserIDString, now.AddDays(1));
+                    data.cooldown.Add(player.UserIDString, now.AddDays(1));
                     timer.Once(86400, () =>
                     {
-                        data.cooldown.Remove(p.UserIDString);
+                        data.cooldown.Remove(player.UserIDString);
                     });
                 }
             }
             else
             {
-                p.ChatMessage("Cannot spawn a minicopter because you're building blocked!");
+                player.ChatMessage("Cannot spawn a minicopter because you're building blocked!");
             }
         }
 
