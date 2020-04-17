@@ -1,6 +1,5 @@
 ﻿using Oxide.Core;
 using Oxide.Core.Configuration;
-using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,11 +7,12 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("SpawnMini", "Spooks © 2020", 1.0), Description("Spawn a mini!")]
+    [Info("SpawnMini", "qSpooks", 1.0), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
         private SaveData data;
+        private PluginConfig config;
 
         private readonly string _spawnMini = "spawnmini.mini";
         private readonly string _noCooldown = "spawnmini.nocd";
@@ -20,11 +20,12 @@ namespace Oxide.Plugins
 
         private void Loaded()
         {
-            Puts("Loaded");
             /* EDIT PERMISSIONS HERE */
             permission.RegisterPermission(_spawnMini, this);
             permission.RegisterPermission(_noCooldown, this);
             permission.RegisterPermission(_noMini, this);
+
+            config = Config.ReadObject<PluginConfig>();
 
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile("SpawnMini"))
             {
@@ -36,7 +37,6 @@ namespace Oxide.Plugins
 
         void Unload()
         {
-            Puts("Unloaded");
             Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", data);
         }
 
@@ -131,8 +131,8 @@ namespace Oxide.Plugins
                 DateTime now = DateTime.Now;
                 if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
-                    data.cooldown.Add(player.UserIDString, now.AddDays(1));
-                    timer.Once(86400, () =>
+                    data.cooldown.Add(player.UserIDString, now.AddSeconds(config.cooldownTime));
+                    timer.Once(config.cooldownTime, () =>
                     {
                         data.cooldown.Remove(player.UserIDString);
                     });
@@ -148,6 +148,24 @@ namespace Oxide.Plugins
         {
             public Dictionary<string, uint> playerMini = new Dictionary<string, uint>();
             public Dictionary<string, DateTime> cooldown = new Dictionary<string, DateTime>();
+        }
+
+        class PluginConfig
+        {
+            public float cooldownTime { get; set; }
+        }
+
+        private PluginConfig GetDefaultConfig()
+        {
+            return new PluginConfig
+            {
+                cooldownTime = 86400f
+            };
+        }
+
+        protected override void LoadDefaultConfig()
+        {
+            Config.WriteObject(GetDefaultConfig(), true);
         }
     }
 }
