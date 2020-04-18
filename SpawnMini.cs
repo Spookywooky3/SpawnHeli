@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("SpawnMini", "qSpooks", 1.0.1), Description("Spawn a mini!")]
+    [Info("SpawnMini", "qSpooks", "1.0.1"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
@@ -19,7 +19,7 @@ namespace Oxide.Plugins
         private readonly string _noCooldown = "spawnmini.nocd";
         private readonly string _noMini = "spawnmini.nomini";
 
-        private void Loaded()
+        private void Loaded() 
         {
             permission.RegisterPermission(_spawnMini, this);
             permission.RegisterPermission(_noCooldown, this);
@@ -78,8 +78,16 @@ namespace Oxide.Plugins
                 }
                 else if (data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
-                    var cooldown = data.cooldown[player.UserIDString];
-                    player.ChatMessage($"You have {Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)} minutes until your cooldown ends");
+                    if (data.cooldown[player.UserIDString] > DateTime.Now)
+                    {
+                        var cooldown = data.cooldown[player.UserIDString];
+                        player.ChatMessage($"You have {Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)} minutes until your cooldown ends");
+                    }
+                    else
+                    {
+                        data.cooldown.Remove(player.UserIDString);
+                        SpawnMinicopter(player);
+                    }
                 }
                 else if (!data.playerMini.ContainsKey(player.UserIDString) && permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
@@ -136,10 +144,6 @@ namespace Oxide.Plugins
                 if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
                     data.cooldown.Add(player.UserIDString, now.AddSeconds(config.cooldownTime));
-                    timer.Once(config.cooldownTime, () =>
-                    {
-                        data.cooldown.Remove(player.UserIDString);
-                    });
                 }
             }
             else
