@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("SpawnMini", "qSpooks", "1.0.1"), Description("Spawn a mini!")]
+    [Info("SpawnMini", "SpooksAU", "1.0.1"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
