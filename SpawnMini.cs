@@ -59,21 +59,17 @@ namespace Oxide.Plugins
             Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", data);
         }
 
-        void OnEntityKill(BaseNetworkable entity)
+        void OnEntityKill(MiniCopter mini)
         {
-            if (entity.ShortPrefabName == "minicopter.entity")
+            if (data.playerMini.ContainsValue(mini.net.ID))
             {
-                MiniCopter mini = entity as MiniCopter;
-                if (data.playerMini.ContainsValue(mini.net.ID))
+                string key = data.playerMini.FirstOrDefault(x => x.Value == mini.net.ID).Key;
+                var player = BasePlayer.FindByID(ulong.Parse(key));
+                if (player != null)
                 {
-                    string key = data.playerMini.FirstOrDefault(x => x.Value == mini.net.ID).Key;
-                    var player = BasePlayer.FindByID(ulong.Parse(key));
-                    if (player != null)
-                    {
-                        player.ChatMessage("Your minicopter has been destroyed!");
-                    }
-                    data.playerMini.Remove(key);
+                    player.ChatMessage("Your minicopter has been destroyed!");
                 }
+                data.playerMini.Remove(key);
             }
         }
 
