@@ -1,18 +1,4 @@
-//   Copyright 2020 SpooksAU aka Spookywooky3
-//
-//   Licensed under the Apache License, Version 2.0 (the "License");
-//   you may not use this file except in compliance with the License.
-//   You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-//   Unless required by applicable law or agreed to in writing, software
-//   distributed under the License is distributed on an "AS IS" BASIS,
-//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//   See the License for the specific language governing permissions and
-//   limitations under the License.
-
-using Oxide.Core;
+﻿using Oxide.Core;
 using Oxide.Core.Configuration;
 using System;
 using System.Collections.Generic;
@@ -21,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("SpawnMini", "SpooksAU", "1.0.1"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "1.0.4"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
@@ -67,7 +53,7 @@ namespace Oxide.Plugins
                 var player = BasePlayer.FindByID(ulong.Parse(key));
                 if (player != null)
                 {
-                    player.ChatMessage("Your minicopter has been destroyed!");
+                    player.ChatMessage(lang.GetMessage("mini_destroyed", this, player.UserIDString));
                 }
                 data.playerMini.Remove(key);
             }
@@ -78,20 +64,22 @@ namespace Oxide.Plugins
         {
             if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
-                player.ChatMessage("You do not have permission to spawn a minicopter!");
+                player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
             }
             else
             {
                 if (data.playerMini.ContainsKey(player.UserIDString))
                 {
-                    player.ChatMessage("You already have a minicopter!");
+                    player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
                 }
                 else if (data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
                     if (data.cooldown[player.UserIDString] > DateTime.Now)
                     {
                         var cooldown = data.cooldown[player.UserIDString];
-                        player.ChatMessage($"You have {Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)} minutes until your cooldown ends");
+
+                        player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft", this, player.UserIDString),
+                            Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)));
                     }
                     else
                     {
@@ -115,13 +103,13 @@ namespace Oxide.Plugins
         {
             if (!permission.UserHasPermission(player.UserIDString, _noMini))
             {
-                player.ChatMessage("You do not have permission to use this command!");
+                player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
             }
             else
             {
                 if (!data.playerMini.ContainsKey(player.UserIDString))
                 {
-                    player.ChatMessage("You do not have a minicopter!");
+                    player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
                 }
                 else
                 {
@@ -133,32 +121,41 @@ namespace Oxide.Plugins
 
         private void SpawnMinicopter(BasePlayer player)
         {
-            string miniPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab";
-
             if (!player.IsBuildingBlocked())
             {
-                // https://umod.org/plugins/my-mini-copter
-                Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
-                Vector3 straight = Vector3.Cross(Vector3.Cross(Vector3.up, forward), Vector3.up).normalized;
-                Vector3 position = player.transform.position + straight * 5f;
-                position.y = player.transform.position.y + 2.5f;
-                BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(miniPrefab, position, new Quaternion());
-                BaseEntity miniEntity = vehicleMini as BaseEntity;
-                miniEntity.OwnerID = player.userID;
-                vehicleMini.Spawn();
-                // End
-
-                data.playerMini.Add(player.UserIDString, vehicleMini.net.ID);
-
-                DateTime now = DateTime.Now;
-                if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
+                RaycastHit hit;
+                if (Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity, 
+                    LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
                 {
-                    data.cooldown.Add(player.UserIDString, now.AddSeconds(config.cooldownTime));
+                    if (hit.distance > config.maxSpawnDistance)
+                    {
+                        player.ChatMessage(lang.GetMessage("mini_distance", this, player.UserIDString));
+                    }
+                    else
+                    {
+                        Vector3 position = hit.point + Vector3.up * 2f;
+
+                        BaseVehicle mini = (BaseVehicle)GameManager.server.CreateEntity(config.assetPrefab, position, new Quaternion());
+                        BaseEntity miniEnt = mini as BaseEntity;
+                        miniEnt.OwnerID = player.userID;
+
+                        mini.Spawn();
+
+                        data.playerMini.Add(player.UserIDString, mini.net.ID);
+                        if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
+                        {
+                            data.cooldown.Add(player.UserIDString, DateTime.Now.AddSeconds(config.cooldownTime));
+                        }
+                    }
+                }
+                else
+                {
+                    player.ChatMessage(lang.GetMessage("mini_terrain", this, player.UserIDString));
                 }
             }
             else
             {
-                player.ChatMessage("Cannot spawn a minicopter because you're building blocked!");
+                player.ChatMessage(lang.GetMessage("mini_priv", this, player.UserIDString));
             }
         }
 
@@ -171,19 +168,38 @@ namespace Oxide.Plugins
         class PluginConfig
         {
             public float cooldownTime { get; set; }
+            public float maxSpawnDistance { get; set; }
+            public string assetPrefab { get; set; }
         }
 
         private PluginConfig GetDefaultConfig()
         {
             return new PluginConfig
             {
-                cooldownTime = 86400f
+                cooldownTime = 86400f,
+                maxSpawnDistance = 5f,
+                assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab"
             };
         }
 
         protected override void LoadDefaultConfig()
         {
             Config.WriteObject(GetDefaultConfig(), true);
+        }
+
+        protected override void LoadDefaultMessages()
+        {
+            lang.RegisterMessages(new Dictionary<string, string>
+            {
+                ["mini_destroyed"] = "Your minicopter has been destroyed!",
+                ["mini_perm"] = "You do not have permission to use this command!",
+                ["mini_current"] = "You already have a minicopter!",
+                ["mini_notcurrent"] = "You do not have a minicopter!",
+                ["mini_priv"] = "Cannot spawn a minicopter because you're building blocked!",
+                ["mini_timeleft"] = "You have {0} minutes until your cooldown ends",
+                ["mini_distance"] = "You're trying to spawn the minicopter too far away!",
+                ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!"
+            }, this, "en");
         }
     }
 }
