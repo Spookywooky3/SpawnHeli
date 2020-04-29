@@ -11,6 +11,7 @@
 ```
 {
   "assetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab", // The asset that you would like to spawn.
-  "cooldownTime": 86400.0 // The cooldown timer for the command.
+  "cooldownTime": 86400.0, // The cooldown timer for the command.
+  "maxSpawnDistance": 5.0 // How far a user is allowed to spawn a minicopter away from them.
 }
 ```
