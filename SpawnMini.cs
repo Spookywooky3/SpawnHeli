@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "1.0.6"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "1.0.7"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
@@ -119,11 +119,7 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    var heli = BaseNetworkable.serverEntities.Find(data.playerMini[player.UserIDString]);
-
-                    if (heli != null)
-                        heli.Kill();
-
+                    BaseNetworkable.serverEntities.Find(data.playerMini[player.UserIDString])?.Kill(); 
                     SpawnMinicopter(player);
                 }
             }
