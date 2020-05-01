@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "1.0.5"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "1.0.6"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
@@ -79,7 +79,6 @@ namespace Oxide.Plugins
             }
             else
             {
-                
                 if (data.playerMini.ContainsKey(player.UserIDString))
                 {
                     player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
