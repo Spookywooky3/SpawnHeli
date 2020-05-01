@@ -39,6 +39,8 @@ namespace Oxide.Plugins
             permission.RegisterPermission(_noCooldown, this);
             permission.RegisterPermission(_noMini, this);
 
+            config = Config.ReadObject<PluginConfig>();
+
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile("SpawnMini"))
             {
                 dataFile = Interface.Oxide.DataFileSystem.GetDatafile("SpawnMini");
@@ -58,11 +60,12 @@ namespace Oxide.Plugins
             if (data.playerMini.ContainsValue(mini.net.ID))
             {
                 string key = data.playerMini.FirstOrDefault(x => x.Value == mini.net.ID).Key;
+
                 var player = BasePlayer.FindByID(ulong.Parse(key));
+
                 if (player != null)
-                {
                     player.ChatMessage(lang.GetMessage("mini_destroyed", this, player.UserIDString));
-                }
+
                 data.playerMini.Remove(key);
             }
         }
@@ -76,16 +79,16 @@ namespace Oxide.Plugins
             }
             else
             {
+                
                 if (data.playerMini.ContainsKey(player.UserIDString))
                 {
                     player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
                 }
                 else if (data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
-                    if (data.cooldown[player.UserIDString] > DateTime.Now)
+                    var cooldown = data.cooldown[player.UserIDString];
+                    if (cooldown > DateTime.Now)
                     {
-                        var cooldown = data.cooldown[player.UserIDString];
-
                         player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft", this, player.UserIDString),
                             Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)));
                     }
@@ -95,7 +98,7 @@ namespace Oxide.Plugins
                         SpawnMinicopter(player);
                     }
                 }
-                else if (!data.playerMini.ContainsKey(player.UserIDString) && permission.UserHasPermission(player.UserIDString, _noCooldown))
+                else if (!data.playerMini.ContainsKey(player.UserIDString))
                 {
                     SpawnMinicopter(player);
                 }
@@ -142,14 +145,12 @@ namespace Oxide.Plugins
                     else
                     {
                         Vector3 position = hit.point + Vector3.up * 2f;
-
                         BaseVehicle mini = (BaseVehicle)GameManager.server.CreateEntity(config.assetPrefab, position, new Quaternion());
                         mini.OwnerID = player.userID;
-
-                        if (mini != null)
-                            mini.Spawn();
+                        mini.Spawn();
 
                         data.playerMini.Add(player.UserIDString, mini.net.ID);
+
                         if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
                         {
                             data.cooldown.Add(player.UserIDString, DateTime.Now.AddSeconds(config.cooldownTime));
@@ -188,16 +189,6 @@ namespace Oxide.Plugins
                 maxSpawnDistance = 5f,
                 assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab"
             };
-        }
-
-        protected override void LoadConfig()
-        {
-            config = Config.ReadObject<PluginConfig>();
-        }
-
-        protected override void SaveConfig()
-        {
-            Config.WriteObject(config);
         }
 
         protected override void LoadDefaultConfig()
