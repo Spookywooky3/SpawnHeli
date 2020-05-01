@@ -1,4 +1,4 @@
-//   Copyright 2020 SpooksAU aka Spookywooky3	using Oxide.Core;
+﻿//   Copyright 2020 SpooksAU aka Spookywooky3
 //	
 //   Licensed under the Apache License, Version 2.0 (the "License");	
 //   you may not use this file except in compliance with the License.	
@@ -10,7 +10,7 @@
 //   distributed under the License is distributed on an "AS IS" BASIS,	
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.	
 //   See the License for the specific language governing permissions and	
-//   limitations under the License.﻿
+//   limitations under the License.
 
 using Oxide.Core;
 using Oxide.Core.Configuration;
@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "1.0.4"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "1.0.5"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private DynamicConfigFile dataFile;
@@ -39,22 +39,16 @@ namespace Oxide.Plugins
             permission.RegisterPermission(_noCooldown, this);
             permission.RegisterPermission(_noMini, this);
 
-            config = Config.ReadObject<PluginConfig>();
-
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile("SpawnMini"))
             {
                 dataFile = Interface.Oxide.DataFileSystem.GetDatafile("SpawnMini");
                 dataFile.Save();
             }
+
             data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>("SpawnMini");
         }
 
         void Unload()
-        {
-            Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", data);
-        }
-
-        void OnServerShutdown()
         {
             Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", data);
         }
@@ -105,10 +99,6 @@ namespace Oxide.Plugins
                 {
                     SpawnMinicopter(player);
                 }
-                else
-                {
-                    SpawnMinicopter(player);
-                }
             }
         }
 
@@ -127,7 +117,11 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    BaseNetworkable.serverEntities.Find(data.playerMini[player.UserIDString]).Kill();
+                    var heli = BaseNetworkable.serverEntities.Find(data.playerMini[player.UserIDString]);
+
+                    if (heli != null)
+                        heli.Kill();
+
                     SpawnMinicopter(player);
                 }
             }
@@ -150,10 +144,10 @@ namespace Oxide.Plugins
                         Vector3 position = hit.point + Vector3.up * 2f;
 
                         BaseVehicle mini = (BaseVehicle)GameManager.server.CreateEntity(config.assetPrefab, position, new Quaternion());
-                        BaseEntity miniEnt = mini as BaseEntity;
-                        miniEnt.OwnerID = player.userID;
+                        mini.OwnerID = player.userID;
 
-                        mini.Spawn();
+                        if (mini != null)
+                            mini.Spawn();
 
                         data.playerMini.Add(player.UserIDString, mini.net.ID);
                         if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
@@ -194,6 +188,16 @@ namespace Oxide.Plugins
                 maxSpawnDistance = 5f,
                 assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab"
             };
+        }
+
+        protected override void LoadConfig()
+        {
+            config = Config.ReadObject<PluginConfig>();
+        }
+
+        protected override void SaveConfig()
+        {
+            Config.WriteObject(config);
         }
 
         protected override void LoadDefaultConfig()
