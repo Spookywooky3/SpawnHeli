@@ -15,25 +15,25 @@
 ## For Developers
 
 ```csharp
-void SpawnMinicopter(BasePlayer/string)
-float GetDistance(BasePlayer, MiniCopter)
-bool IsPlayerOwned(MiniCopter)
+void SpawnMinicopter(BasePlayer/string);
+float GetDistance(BasePlayer, MiniCopter);
+bool IsPlayerOwned(MiniCopter);
 ```
 
 ## Configuration
 
 ```json
 {
-  "AssetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab", // Prefab you would like to spawn
-  "CanSpawnBuildingBlocked": false,  // Can player spawn a minicopter while building blocked
-  "MaxNoMiniDistance": 300.0, // The maximum distance the player can be from the minicopter when using /nomini and /fmini
-  "MaxSpawnDistance": 5.0, // How far away can the player spawn a minicopter
-  "PermissionCooldowns": { // These are the cooldown tiers feel free to add/change as many as you like just make sure users only have one for now
+  "AssetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab", -- Prefab you would like to spawn
+  "CanSpawnBuildingBlocked": false,  -- Can player spawn a minicopter while building blocked
+  "MaxNoMiniDistance": 300.0, -- The maximum distance the player can be from the minicopter when using /nomini and /fmini
+  "MaxSpawnDistance": 5.0, -- How far away can the player spawn a minicopter
+  "PermissionCooldowns": { -- These are the cooldown tiers feel free to add/change as many as you like just make sure users only have one for now
     "spawnmini.tier1": 86400.0,
     "spawnmini.tier2": 43200.0,
     "spawnmini.tier3": 21600.0
   },
-  "SpawnHealth": 750.0 // The health the minicopter spawns with
+  "SpawnHealth": 750.0 -- The health the minicopter spawns with
 }
 ```
 
