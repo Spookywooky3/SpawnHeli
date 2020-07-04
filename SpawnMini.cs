@@ -1,4 +1,4 @@
-﻿using Oxide.Core;   
+using Oxide.Core;   
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.6.2"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.6.3"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -285,10 +285,8 @@ namespace Oxide.Plugins
                                 if (permission.UserHasPermission(player.UserIDString, perm.Key))
                                     perms.Add(perm.Key, perm.Value);
 
-                            Puts(perms.Aggregate((l, r) => l.Value < r.Value ? l : r).Value.ToString());
-
-                            _data.cooldown.Add(player.UserIDString,
-                                DateTime.Now.AddSeconds(perms.Aggregate((l, r) => l.Value < r.Value ? l : r).Value));
+                            if (!perms.IsEmpty())
+                                _data.cooldown.Add(player.UserIDString, DateTime.Now.AddSeconds(perms.Aggregate((l, r) => l.Value < r.Value ? l : r).Value));
 
                             // Incase players don't have any cooldown permission default to one day
                             if (!_data.cooldown.ContainsKey(player.UserIDString))
