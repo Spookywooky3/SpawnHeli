@@ -51,7 +51,7 @@ If you have any ideas/suggestions I would love to hear them. Use the Plugin Supp
 ## Credits
 
 * **SpooksAU**, the current maintainer
+* **BuzZ**, the original author of MyMiniCopter
+* **rfc1920**, for helping maintain the plugin
 * **Texas/Alice**, for the German translations
 * **Glasiore**, for the Russian translations
-* **BuzZ**, the original author of this plugin
-* **rfc1920**, for helping maintain the plugin
