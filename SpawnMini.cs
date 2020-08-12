@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.6.3"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.6.4"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -78,12 +78,15 @@ namespace Oxide.Plugins
             return null;
         }
 
-        object CanMountEntity(BasePlayer player, BaseMountable entity)
+        object CanMountEntity(BasePlayer player, BaseVehicleMountPoint entity)
         {
-            if (player == null || entity == null || entity.OwnerID == 0)
+            if (player == null || entity == null)
                 return null;
 
-            if (entity.OwnerID != player.userID)
+            var mini = entity.GetVehicleParent() as MiniCopter;
+            if (mini == null || mini is ScrapTransportHelicopter || mini.OwnerID == 0) return null;
+
+            if (mini.OwnerID != player.userID)
             {
                 if (player.Team != null && player.Team.members.Contains(entity.OwnerID))
                     return null;
@@ -237,6 +240,9 @@ namespace Oxide.Plugins
 
         #region Helpers/Functions
 
+        private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
+            Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
+
         private void SpawnMinicopter(BasePlayer player)
         {
             if (!player.IsBuildingBlocked() || _config.canSpawnBuildingBlocked)
@@ -252,7 +258,7 @@ namespace Oxide.Plugins
                     else
                     {
                         Vector3 position = hit.point + Vector3.up * 2f;
-                        BaseVehicle miniEntity = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, new Quaternion());
+                        BaseVehicle miniEntity = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
                         miniEntity.OwnerID = player.userID;
                         miniEntity.health = _config.spawnHealth;
                         miniEntity.Spawn();
@@ -327,7 +333,7 @@ namespace Oxide.Plugins
             position.y = player.transform.position.y + 2f;
 
             if (position == null) return;
-            BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, new Quaternion());
+            BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
             if (vehicleMini == null) return;
             vehicleMini.OwnerID = player.userID;
             vehicleMini.Spawn();
