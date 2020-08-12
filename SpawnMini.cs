@@ -1,4 +1,4 @@
-using Oxide.Core;   
+using Oxide.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +23,7 @@ namespace Oxide.Plugins
 
         #region Hooks
 
-        private void Loaded() 
+        private void Loaded()
         {
             _config = Config.ReadObject<PluginConfig>();
 
@@ -46,7 +46,7 @@ namespace Oxide.Plugins
                 Unsubscribe(nameof(CanMountEntity));
         }
 
-        void Unload() 
+        void Unload()
             => Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", _data);
 
         void OnEntityKill(MiniCopter mini)
@@ -119,7 +119,7 @@ namespace Oxide.Plugins
                     else
                     {
                         player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
-                    } 
+                    }
                 }
                 else if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
@@ -140,7 +140,7 @@ namespace Oxide.Plugins
                     SpawnMinicopter(player);
                 }
             }
-        }        
+        }
 
         [ChatCommand("fmini")]
         private void FetchMinicopter(BasePlayer player, string command, string[] args)
@@ -179,7 +179,7 @@ namespace Oxide.Plugins
                 }
             }
         }
-        
+
         [ChatCommand("nomini")]
         private void NoMinicopter(BasePlayer player, string command, string[] args)
         {
@@ -242,7 +242,7 @@ namespace Oxide.Plugins
             if (!player.IsBuildingBlocked() || _config.canSpawnBuildingBlocked)
             {
                 RaycastHit hit;
-                if (Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity, 
+                if (Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity,
                     LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
                 {
                     if (hit.distance > _config.maxSpawnDistance)
@@ -276,7 +276,7 @@ namespace Oxide.Plugins
 
                         if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
                         {
-                            
+
 
                             // Sloppy but works
                             // TODO: Improve later
@@ -361,7 +361,7 @@ namespace Oxide.Plugins
             if (mini != null && _data.playerMini.ContainsValue(mini.net.ID))
                 return true;
 
-            return false; 
+            return false;
         }
 
         #endregion
