@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.6.4"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.6.5"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -88,7 +88,7 @@ namespace Oxide.Plugins
 
             if (mini.OwnerID != player.userID)
             {
-                if (player.Team != null && player.Team.members.Contains(entity.OwnerID))
+                if (player.Team != null && player.Team.members.Contains(mini.OwnerID))
                     return null;
 
                 player.ChatMessage(lang.GetMessage("mini_canmount", this, player.UserIDString));
