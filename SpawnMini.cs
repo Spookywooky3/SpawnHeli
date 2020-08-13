@@ -1,4 +1,4 @@
-using Oxide.Core;   
+using Oxide.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.6.3"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.6.4"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -23,7 +23,7 @@ namespace Oxide.Plugins
 
         #region Hooks
 
-        private void Loaded() 
+        private void Loaded()
         {
             _config = Config.ReadObject<PluginConfig>();
 
@@ -46,7 +46,7 @@ namespace Oxide.Plugins
                 Unsubscribe(nameof(CanMountEntity));
         }
 
-        void Unload() 
+        void Unload()
             => Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", _data);
 
         void OnEntityKill(MiniCopter mini)
@@ -78,12 +78,15 @@ namespace Oxide.Plugins
             return null;
         }
 
-        object CanMountEntity(BasePlayer player, BaseMountable entity)
+        object CanMountEntity(BasePlayer player, BaseVehicleMountPoint entity)
         {
-            if (player == null || entity == null || entity.OwnerID == 0)
+            if (player == null || entity == null)
                 return null;
 
-            if (entity.OwnerID != player.userID)
+            var mini = entity.GetVehicleParent() as MiniCopter;
+            if (mini == null || mini is ScrapTransportHelicopter || mini.OwnerID == 0) return null;
+
+            if (mini.OwnerID != player.userID)
             {
                 if (player.Team != null && player.Team.members.Contains(entity.OwnerID))
                     return null;
@@ -119,7 +122,7 @@ namespace Oxide.Plugins
                     else
                     {
                         player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
-                    } 
+                    }
                 }
                 else if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
                 {
@@ -140,7 +143,7 @@ namespace Oxide.Plugins
                     SpawnMinicopter(player);
                 }
             }
-        }        
+        }
 
         [ChatCommand("fmini")]
         private void FetchMinicopter(BasePlayer player, string command, string[] args)
@@ -179,7 +182,7 @@ namespace Oxide.Plugins
                 }
             }
         }
-        
+
         [ChatCommand("nomini")]
         private void NoMinicopter(BasePlayer player, string command, string[] args)
         {
@@ -237,12 +240,15 @@ namespace Oxide.Plugins
 
         #region Helpers/Functions
 
+        private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
+            Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
+
         private void SpawnMinicopter(BasePlayer player)
         {
             if (!player.IsBuildingBlocked() || _config.canSpawnBuildingBlocked)
             {
                 RaycastHit hit;
-                if (Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity, 
+                if (Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity,
                     LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
                 {
                     if (hit.distance > _config.maxSpawnDistance)
@@ -252,7 +258,7 @@ namespace Oxide.Plugins
                     else
                     {
                         Vector3 position = hit.point + Vector3.up * 2f;
-                        BaseVehicle miniEntity = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, new Quaternion());
+                        BaseVehicle miniEntity = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
                         miniEntity.OwnerID = player.userID;
                         miniEntity.health = _config.spawnHealth;
                         miniEntity.Spawn();
@@ -276,7 +282,7 @@ namespace Oxide.Plugins
 
                         if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
                         {
-                            
+
 
                             // Sloppy but works
                             // TODO: Improve later
@@ -327,7 +333,7 @@ namespace Oxide.Plugins
             position.y = player.transform.position.y + 2f;
 
             if (position == null) return;
-            BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, new Quaternion());
+            BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
             if (vehicleMini == null) return;
             vehicleMini.OwnerID = player.userID;
             vehicleMini.Spawn();
@@ -361,7 +367,7 @@ namespace Oxide.Plugins
             if (mini != null && _data.playerMini.ContainsValue(mini.net.ID))
                 return true;
 
-            return false; 
+            return false;
         }
 
         #endregion

@@ -1,7 +1,7 @@
 ## Permissions
 
-* `spawnmini.mini`  -- Allows player to spawn a minicopter with `/mini`
-* `spawnmini.nocd` -- Gives player no cooldown for `/mini` chat command
+* `spawnmini.mini`  -- Allows player to spawn a minicopter with `/mymini`
+* `spawnmini.nocd` -- Gives player no cooldown for `/mymini` chat command
 * `spawnmini.nomini` -- Allows player to use `/nomini` chat command 
 * `spawnmini.nodecay` -- Doesn't allow the player's minicopter to decay
 * `spawnmini.unlimitedfuel` -- Gives the player unlimited fuel when they spawn their minicopter
