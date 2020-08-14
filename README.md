@@ -46,7 +46,7 @@ Spawn Mini supports English, Russian, and German; and you can also add more lang
 
 * `/findmini` command that displays the bearing and distance of the minicopter
 
-If you have any ideas/suggestions I would love to hear them. Use the Plugin Support or add me on discord Spooks#1328.
+If you have any ideas/suggestions I would love to hear them. If you have any issues use the Plugin Support section.
 
 ## Credits
 
