@@ -6,11 +6,16 @@
 * `spawnmini.nodecay` -- Doesn't allow the player's minicopter to decay
 * `spawnmini.unlimitedfuel` -- Gives the player unlimited fuel when they spawn their minicopter
 * `spawnmini.fmini` -- Allows player to use `/fmini` chat command
+
 ## Chat Commands
 
 * `/mymini` -- Spawn a minicopter
 * `/nomini` -- Despawn your minicopter
 * `/fmini` -- Fetch your minicopter
+
+## Server Commands
+
+* `spawnmini.give <steamid or name>` -- Spawn a minicopter for a specific player
 
 ## For Developers
 
@@ -26,7 +31,7 @@ bool IsPlayerOwned(MiniCopter);
 {
   "AssetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab", -- Prefab you would like to spawn
   "CanSpawnBuildingBlocked": false,  -- Can player spawn a minicopter while building blocked
-  "MaxNoMiniDistance": 300.0, -- The maximum distance the player can be from the minicopter when using /nomini and /fmini
+  "MaxNoMiniDistance": 300.0, -- The maximum distance the player can be from the minicopter when using /nomini and /fmini (set to -1 for unlimited distance)
   "MaxSpawnDistance": 5.0, -- How far away can the player spawn a minicopter
   "OwnerAndTeamCanMount": false, -- If you want only the owner and their team members to be able to mount the mini set this to true
   "PermissionCooldowns": { -- These are the cooldown tiers feel free to add/change as many as you like just make sure users only have one for now
