@@ -6,11 +6,16 @@
 * `spawnmini.nodecay` -- Doesn't allow the player's minicopter to decay
 * `spawnmini.unlimitedfuel` -- Gives the player unlimited fuel when they spawn their minicopter
 * `spawnmini.fmini` -- Allows player to use `/fmini` chat command
+
 ## Chat Commands
 
 * `/mymini` -- Spawn a minicopter
 * `/nomini` -- Despawn your minicopter
 * `/fmini` -- Fetch your minicopter
+
+## Server Commands
+
+* `spawnmini.give <steamid or name>` -- Spawn a minicopter for a specific player
 
 ## For Developers
 
