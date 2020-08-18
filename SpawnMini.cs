@@ -46,6 +46,17 @@ namespace Oxide.Plugins
                 Unsubscribe(nameof(CanMountEntity));
         }
 
+        void OnServerInitialized()
+        {
+            foreach (var mini in BaseNetworkable.serverEntities.OfType<MiniCopter>())
+            {
+                if (IsPlayerOwned(mini) && mini.OwnerID != 0 && permission.UserHasPermission(mini.OwnerID.ToString(), _noFuel))
+                {
+                    EnableUnlimitedFuel(mini);
+                }
+            }
+        }
+
         void Unload() => WriteSaveData();
 
         void OnNewSave()
@@ -280,11 +291,7 @@ namespace Oxide.Plugins
                             if (minicopter == null)
                                 return;
 
-                            minicopter.fuelPerSec = 0f;
-
-                            StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-                            ItemManager.CreateByItemID(-946369541, 1)?.MoveToContainer(fuelContainer.inventory);
-                            fuelContainer.SetFlag(BaseEntity.Flags.Locked, true);
+                            EnableUnlimitedFuel(minicopter);
                         }
 
                         _data.playerMini.Add(player.UserIDString, miniEntity.net.ID);
@@ -357,12 +364,17 @@ namespace Oxide.Plugins
                 if (minicopter == null)
                     return;
 
-                minicopter.fuelPerSec = 0f;
-
-                StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-                ItemManager.CreateByItemID(-946369541, 1)?.MoveToContainer(fuelContainer.inventory);
-                fuelContainer.SetFlag(BaseEntity.Flags.Locked, true);
+                EnableUnlimitedFuel(minicopter);
             }
+        }
+
+        private void EnableUnlimitedFuel(MiniCopter minicopter)
+        {
+            minicopter.fuelPerSec = 0f;
+
+            StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
+            ItemManager.CreateByItemID(-946369541, 1)?.MoveToContainer(fuelContainer.inventory);
+            fuelContainer.SetFlag(BaseEntity.Flags.Locked, true);
         }
 
         private float GetDistance(BasePlayer player, MiniCopter mini)
