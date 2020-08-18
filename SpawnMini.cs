@@ -165,20 +165,21 @@ namespace Oxide.Plugins
                     if (mini == null)
                         return;
 
-                    if (!mini.AnyMounted() && GetDistance(player, mini) < _config.noMiniDistance)
-                    {
-                        Puts(GetDistance(player, mini).ToString());
-                        Vector3 destination = new Vector3(player.transform.position.x, player.transform.position.y + 3.5f, player.transform.position.z + 2);
-                        mini.transform.position = destination;
-                    }
-                    else if (GetDistance(player, mini) > _config.noMiniDistance)
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
-                    }
-                    else if (mini.AnyMounted())
+                    if (mini.AnyMounted())
                     {
                         player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
+                        return;
                     }
+
+                    if (IsMiniBeyondMaxDistance(player, mini))
+                    {
+                        player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                        return;
+                    }
+
+                    Puts(GetDistance(player, mini).ToString());
+                    Vector3 destination = new Vector3(player.transform.position.x, player.transform.position.y + 3.5f, player.transform.position.z + 2);
+                    mini.transform.position = destination;
                 }
             }
         }
@@ -203,18 +204,19 @@ namespace Oxide.Plugins
                     if (mini == null)
                         return;
 
-                    if (!mini.AnyMounted() && GetDistance(player, mini) < _config.noMiniDistance)
-                    {
-                        BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString])?.Kill();
-                    }
-                    else if (GetDistance(player, mini) > _config.noMiniDistance)
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
-                    }
-                    else if (mini.AnyMounted())
+                    if (mini.AnyMounted())
                     {
                         player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
+                        return;
                     }
+
+                    if (IsMiniBeyondMaxDistance(player, mini))
+                    {
+                        player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                        return;
+                    }
+
+                    BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString])?.Kill();
                 }
             }
         }
@@ -239,6 +241,9 @@ namespace Oxide.Plugins
         #endregion
 
         #region Helpers/Functions
+
+        private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
+            _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
 
         private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
             Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
