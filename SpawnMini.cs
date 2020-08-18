@@ -23,7 +23,7 @@ namespace Oxide.Plugins
 
         #region Hooks
 
-        private void Loaded()
+        private void Init()
         {
             _config = Config.ReadObject<PluginConfig>();
 
@@ -37,17 +37,23 @@ namespace Oxide.Plugins
             foreach (var perm in _config.cooldowns)
                 permission.RegisterPermission(perm.Key, this);
 
-            if (!Interface.Oxide.DataFileSystem.ExistsDatafile("SpawnMini"))
-                Interface.Oxide.DataFileSystem.GetDatafile("SpawnMini").Save();
+            if (!Interface.Oxide.DataFileSystem.ExistsDatafile(Name))
+                Interface.Oxide.DataFileSystem.GetDatafile(Name).Save();
 
-            _data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>("SpawnMini");
+            _data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>(Name);
 
             if (!_config.ownerOnly)
                 Unsubscribe(nameof(CanMountEntity));
         }
 
-        void Unload()
-            => Interface.Oxide.DataFileSystem.WriteObject("SpawnMini", _data);
+        void Unload() => WriteSaveData();
+
+        void OnNewSave()
+        {
+            _data.playerMini.Clear();
+            _data.cooldown.Clear();
+            WriteSaveData();
+        }
 
         void OnEntityKill(MiniCopter mini)
         {
@@ -107,42 +113,40 @@ namespace Oxide.Plugins
             if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
                 player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
+                return;
             }
-            else
+
+            if (_data.playerMini.ContainsKey(player.UserIDString))
             {
-                if (_data.playerMini.ContainsKey(player.UserIDString))
+                // Fix a potential data file desync where the mini doesn't exist anymore
+                // Desyncs should be rare but are not possible to 100% prevent
+                // They can happen if the mini is destroyed while the plugin is unloaded
+                // Or if someone edits the data file manually
+                if (BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) == null)
                 {
-                    // Should fix the bug that someone posted on the forums, should look for a better fix later though
-                    // https://umod.org/community/spawn-mini/21188-unable-to-spawn-mini
-                    if (BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) == null)
-                    {
-                        _data.playerMini.Remove(player.UserIDString);
-                        player.ChatMessage(lang.GetMessage("mini_error", this, player.UserIDString));
-                    }
-                    else
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
-                    }
+                    _data.playerMini.Remove(player.UserIDString);
                 }
-                else if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
+                else
                 {
-                    DateTime cooldown = _data.cooldown[player.UserIDString];
-                    if (cooldown > DateTime.Now)
-                    {
-                        player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft", this, player.UserIDString),
-                            Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)));
-                    }
-                    else
-                    {
-                        _data.cooldown.Remove(player.UserIDString);
-                        SpawnMinicopter(player);
-                    }
-                }
-                else if (!_data.playerMini.ContainsKey(player.UserIDString))
-                {
-                    SpawnMinicopter(player);
+                    player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                    return;
                 }
             }
+            
+            if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
+            {
+                DateTime cooldown = _data.cooldown[player.UserIDString];
+                if (cooldown > DateTime.Now)
+                {
+                    player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft", this, player.UserIDString),
+                        Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)));
+                    return;
+                }
+
+                _data.cooldown.Remove(player.UserIDString);
+            }
+
+            SpawnMinicopter(player);
         }
 
         [ChatCommand("fmini")]
@@ -379,6 +383,9 @@ namespace Oxide.Plugins
 
         #region Classes And Overrides
 
+        private void WriteSaveData() =>
+            Interface.Oxide.DataFileSystem.WriteObject(Name, _data);
+
         class SaveData
         {
             public Dictionary<string, uint> playerMini = new Dictionary<string, uint>();
@@ -447,7 +454,6 @@ namespace Oxide.Plugins
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
                 ["mini_mounted"] = "A player is currenty mounted on the minicopter!",
                 ["mini_current_distance"] = "The minicopter is too far!",
-                ["mini_error"] = "Unknown error occured, try again!",
                 ["mini_rcon"] = "This command can only be run from RCON!",
                 ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!"
             }, this, "en");
@@ -463,7 +469,6 @@ namespace Oxide.Plugins
                 ["mini_terrain"] = "Попытка породить мини-вертолет вне местности!",
                 ["mini_mounted"] = "Игрок в данный момент сидит на миникоптере или это слишком далеко!",
                 ["mini_current_distance"] = "Мини-вертолет слишком далеко!",
-                ["mini_error"] = "Произошла неизвестная ошибка, попробуйте еще раз!",
                 ["mini_rcon"] = "Эту команду можно запустить только из RCON!",
                 ["mini_canmount"] = "Вы не являетесь владельцем этого Minicopter или в команде владельца!"
             }, this, "ru");
@@ -479,7 +484,6 @@ namespace Oxide.Plugins
                 ["mini_terrain"] = "Du versucht laichen einen minikopter außerhalb des geländes!",
                 ["mini_mounted"] = "Ein Spieler ist gerade am Minikopter montiert oder es ist zu weit!",
                 ["mini_current_distance"] = "Der Minikopter ist zu weit!",
-                ["mini_error"] = "Unbekannter Fehler aufgetreten, versuchen Sie es erneut!",
                 ["mini_rcon"] = "Dieser Befehl kann nur von RCON ausgeführt werden!",
                 ["mini_canmount"] = "Sie sind nicht der Besitzer dieses Minicopters oder im Team des Besitzers!"
             }, this, "de");
