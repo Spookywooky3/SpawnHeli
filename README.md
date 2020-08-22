@@ -36,6 +36,7 @@ bool IsPlayerOwned(MiniCopter);
   "FuelAmount": 0,  -- Amount of low grade fuel to add to minicopters when spawned, -1 for max stack size (ignored for players with the unlimited fuel permission)
   "MaxNoMiniDistance": 300.0, -- The maximum distance the player can be from the minicopter when using /nomini and /fmini (set to -1 for unlimited distance)
   "MaxSpawnDistance": 5.0, -- How far away can the player spawn a minicopter
+  "UseFixedSpawnDistance": false,  -- Set to true to spawn the minicopter at a fixed distance in front of the player instead of where they are looking (MaxSpawnDistance will be ignored)
   "OwnerAndTeamCanMount": false, -- If you want only the owner and their team members to be able to mount the mini set this to true
   "PermissionCooldowns": { -- These are the cooldown tiers feel free to add/change as many as you like just make sure users only have one for now
     "spawnmini.tier1": 86400.0,

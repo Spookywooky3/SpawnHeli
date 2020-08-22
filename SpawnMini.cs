@@ -280,21 +280,31 @@ namespace Oxide.Plugins
                 return;
             }
 
-            RaycastHit hit;
-            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity,
-                LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
+            Vector3 position;
+
+            if (_config.useFixedSpawnDistance)
             {
-                player.ChatMessage(lang.GetMessage("mini_terrain", this, player.UserIDString));
-                return;
+                position = GetIdealFixedPositionForPlayer(player);
+            }
+            else
+            {
+                RaycastHit hit;
+                if (!Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity,
+                    LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
+                {
+                    player.ChatMessage(lang.GetMessage("mini_terrain", this, player.UserIDString));
+                    return;
+                }
+
+                if (hit.distance > _config.maxSpawnDistance)
+                {
+                    player.ChatMessage(lang.GetMessage("mini_sdistance", this, player.UserIDString));
+                    return;
+                }
+
+                position = hit.point + Vector3.up * 2f;
             }
 
-            if (hit.distance > _config.maxSpawnDistance)
-            {
-                player.ChatMessage(lang.GetMessage("mini_sdistance", this, player.UserIDString));
-                return;
-            }
-
-            Vector3 position = hit.point + Vector3.up * 2f;
             MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
             if (mini == null) return;
 
@@ -411,6 +421,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("MaxSpawnDistance")]
             public float maxSpawnDistance { get; set; }
+
+            [JsonProperty("UseFixedSpawnDistance")]
+            public bool useFixedSpawnDistance { get; set; }
 
             [JsonProperty("MaxNoMiniDistance")]
             public float noMiniDistance { get; set; }
