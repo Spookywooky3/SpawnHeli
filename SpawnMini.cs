@@ -201,9 +201,7 @@ namespace Oxide.Plugins
                     mountPoint.mountable?.DismountAllPlayers();
             }
 
-            Puts(GetDistance(player, mini).ToString());
-            Vector3 destination = new Vector3(player.transform.position.x, player.transform.position.y + 3.5f, player.transform.position.z + 2);
-            mini.transform.position = destination;
+            mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
         }
 
         [ChatCommand("nomini")]
@@ -264,6 +262,12 @@ namespace Oxide.Plugins
 
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
+
+        private Vector3 GetIdealFixedPositionForPlayer(BasePlayer player)
+        {
+            Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
+            return player.transform.position + forward.normalized * 3f + Vector3.up * 2f;
+        }
 
         private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
             Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
