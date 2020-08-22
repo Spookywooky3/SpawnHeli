@@ -344,15 +344,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            // Credit Original MyMinicopter Plugin
-            Quaternion rotation = player.GetNetworkRotation();
-            Vector3 forward = rotation * Vector3.forward;
-            Vector3 straight = Vector3.Cross(Vector3.Cross(Vector3.up, forward), Vector3.up).normalized;
-            Vector3 position = player.transform.position + straight * 5f;
-            position.y = player.transform.position.y + 2f;
-
-            if (position == null) return;
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player)) as MiniCopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
