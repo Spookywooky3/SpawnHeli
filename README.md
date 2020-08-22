@@ -27,25 +27,41 @@ bool IsPlayerOwned(MiniCopter);
 
 ## Configuration
 
+Default configuration:
 ```json
 {
-  "AssetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab", -- Prefab you would like to spawn
-  "CanSpawnBuildingBlocked": false,  -- Can player spawn a minicopter while building blocked
-  "CanDespawnWhileOccupied": false,  -- Can player use /nomini while the mini is mounted
-  "CanFetchWhileOccupied": false,  -- Can player use /fmini while the mini is mounted (will dismount players)
-  "FuelAmount": 0,  -- Amount of low grade fuel to add to minicopters when spawned, -1 for max stack size (ignored for players with the unlimited fuel permission)
-  "MaxNoMiniDistance": 300.0, -- The maximum distance the player can be from the minicopter when using /nomini and /fmini (set to -1 for unlimited distance)
-  "MaxSpawnDistance": 5.0, -- How far away can the player spawn a minicopter
-  "UseFixedSpawnDistance": false,  -- Set to true to spawn the minicopter at a fixed distance in front of the player instead of where they are looking (MaxSpawnDistance will be ignored)
-  "OwnerAndTeamCanMount": false, -- If you want only the owner and their team members to be able to mount the mini set this to true
-  "PermissionCooldowns": { -- These are the cooldown tiers feel free to add/change as many as you like just make sure users only have one for now
+  "AssetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab",
+  "CanDespawnWhileOccupied": false,
+  "CanFetchWhileOccupied": false,
+  "CanSpawnBuildingBlocked": false,
+  "FuelAmount": 0,
+  "MaxNoMiniDistance": 300.0,
+  "MaxSpawnDistance": 5.0,
+  "OwnerAndTeamCanMount": false,
+  "PermissionCooldowns": {
     "spawnmini.tier1": 86400.0,
     "spawnmini.tier2": 43200.0,
     "spawnmini.tier3": 21600.0
   },
-  "SpawnHealth": 750.0 -- The health the minicopter spawns with
+  "SpawnHealth": 750.0,
+  "UseFixedSpawnDistance": false
 }
 ```
+
+Options explained:
+* `CanDespawnWhileOccupied` (`true` or `false`) -- Whether to allow players to use `/nomini` while their minicopter is mounted. Regardless of this setting, players cannot despawn their minicopter while they mounted on it.
+* `CanFetchWhileOccupied` (`true` or `false`) -- Whether to allow players to use `/fmini` while the minicopter is mounted. Mounted players will be dismounted automatically. Regardless of this setting, players cannot fetched their minicopter while they are mounted on it.
+* `CanSpawnBuildingBlocked` (`true` or `false`) -- Whether to allow players to spawn a minicopter while building blocked.
+* `FuelAmount` -- Amount of low grade fuel to add to minicopters when spawned. Set to `-1` for max stack size (which depends on the server, but is 500 in vanilla). Does not apply to minicopters spawned for players who have the `spawnmini.unlimitedfuel` permission.
+* `MaxNoMiniDistance` -- The maximum distance players can be from their minicopter to use `/nomini` or `/fmini`. Set to `-1` to allow those commands at unlimited distance.
+* `MaxSpawnDistance` -- The maximum distance away that players are allowed to spawn their minicopter.
+* `OwnerAndTeamCanMount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the minicopter.
+* `PermissionCooldowns` -- Use these settings to customize cooldowns for different player groups. For example, set `"spawnmini.tier1": 3600.0` and then grant the `spawnmini.tier1` permission to a group of players to assign them a 1 hour cooldown for spawning their minicopters.
+  * If a player has multiple cooldown permissions, the lowest is used.
+  * If a player has no cooldown permissions, their cooldown will be 1 day.
+  * You can add as many cooldown tiers as you would like, but you should prefix them all with `spawnmini` to prevent warnings in the server logs.
+* `SpawnHealth` -- The health minicopters will spawn with.
+* `UseFixedSpawnDistance` (`true` or `false`) -- Set to `true` to cause minicopters to spawn directly in front of players at a fixed distance, disregarding the `MaxSpawnDistance` setting. Performs no terrain checks.
 
 ## Localization
 
