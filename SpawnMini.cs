@@ -295,23 +295,20 @@ namespace Oxide.Plugins
             }
 
             Vector3 position = hit.point + Vector3.up * 2f;
-            BaseVehicle miniEntity = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
-            miniEntity.OwnerID = player.userID;
-            miniEntity.health = _config.spawnHealth;
-            miniEntity.Spawn();
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
+            if (mini == null) return;
+
+            mini.OwnerID = player.userID;
+            mini.health = _config.spawnHealth;
+            mini.Spawn();
 
             // Credit Original MyMinicopter Plugin
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
-            {
-                MiniCopter minicopter = miniEntity as MiniCopter;
+                EnableUnlimitedFuel(mini);
+            else
+                AddInitialFuel(mini);
 
-                if (minicopter == null)
-                    return;
-
-                EnableUnlimitedFuel(minicopter);
-            }
-
-            _data.playerMini.Add(player.UserIDString, miniEntity.net.ID);
+            _data.playerMini.Add(player.UserIDString, mini.net.ID);
 
             if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
@@ -355,23 +352,28 @@ namespace Oxide.Plugins
             position.y = player.transform.position.y + 2f;
 
             if (position == null) return;
-            BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
-            if (vehicleMini == null) return;
-            vehicleMini.OwnerID = player.userID;
-            vehicleMini.Spawn();
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
+            if (mini == null) return;
+
+            mini.OwnerID = player.userID;
+            mini.Spawn();
             // End
 
-            _data.playerMini.Add(player.UserIDString, vehicleMini.net.ID);
+            _data.playerMini.Add(player.UserIDString, mini.net.ID);
 
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
-            {
-                MiniCopter minicopter = vehicleMini as MiniCopter;
+                EnableUnlimitedFuel(mini);
+            else
+                AddInitialFuel(mini);
+        }
 
-                if (minicopter == null)
-                    return;
+        private void AddInitialFuel(MiniCopter minicopter)
+        {
+            if (_config.FuelAmount == 0) return;
 
-                EnableUnlimitedFuel(minicopter);
-            }
+            StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
+            int fuelAmount = _config.FuelAmount < 0 ? fuelContainer.allowedItem.stackable : _config.FuelAmount;
+            fuelContainer.inventory.AddItem(fuelContainer.allowedItem, fuelAmount);
         }
 
         private void EnableUnlimitedFuel(MiniCopter minicopter)
@@ -379,7 +381,7 @@ namespace Oxide.Plugins
             minicopter.fuelPerSec = 0f;
 
             StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-            ItemManager.CreateByItemID(-946369541, 1)?.MoveToContainer(fuelContainer.inventory);
+            fuelContainer.inventory.AddItem(fuelContainer.allowedItem, 1);
             fuelContainer.SetFlag(BaseEntity.Flags.Locked, true);
         }
 
@@ -436,6 +438,9 @@ namespace Oxide.Plugins
             [JsonProperty("PermissionCooldowns")]
             public Dictionary<string, float> cooldowns { get; set; }
 
+            [JsonProperty("FuelAmount")]
+            public int FuelAmount { get; set; }
+
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly { get; set; }
         }
@@ -451,6 +456,7 @@ namespace Oxide.Plugins
                 canSpawnBuildingBlocked = false,
                 CanDespawnWhileOccupied = false,
                 CanFetchWhileOccupied = false,
+                FuelAmount = 0,
                 ownerOnly = false,
                 cooldowns = new Dictionary<string, float>()
                 {
