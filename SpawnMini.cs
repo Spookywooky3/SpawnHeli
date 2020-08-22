@@ -146,11 +146,11 @@ namespace Oxide.Plugins
             
             if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
-                DateTime cooldown = _data.cooldown[player.UserIDString];
-                if (cooldown > DateTime.Now)
+                DateTime lastSpawned = _data.cooldown[player.UserIDString];
+                TimeSpan timeRemaining = CeilingTimeSpan(lastSpawned.AddSeconds(GetPlayerCooldownSeconds(player)) - DateTime.Now);
+                if (timeRemaining.TotalSeconds > 0)
                 {
-                    player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft", this, player.UserIDString),
-                        Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)));
+                    player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft_new", this, player.UserIDString), timeRemaining.ToString("g")));
                     return;
                 }
 
@@ -260,6 +260,9 @@ namespace Oxide.Plugins
 
         #region Helpers/Functions
 
+        private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
+            new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
+
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
 
@@ -322,21 +325,7 @@ namespace Oxide.Plugins
 
             if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
-
-
-                // Sloppy but works
-                // TODO: Improve later
-                Dictionary<string, float> perms = new Dictionary<string, float>();
-                foreach (var perm in _config.cooldowns)
-                    if (permission.UserHasPermission(player.UserIDString, perm.Key))
-                        perms.Add(perm.Key, perm.Value);
-
-                if (!perms.IsEmpty())
-                    _data.cooldown.Add(player.UserIDString, DateTime.Now.AddSeconds(perms.Aggregate((l, r) => l.Value < r.Value ? l : r).Value));
-
-                // Incase players don't have any cooldown permission default to one day
-                if (!_data.cooldown.ContainsKey(player.UserIDString))
-                    _data.cooldown.Add(player.UserIDString, DateTime.Now.AddDays(1));
+                _data.cooldown.Add(player.UserIDString, DateTime.Now);
             }
         }
 
@@ -367,6 +356,15 @@ namespace Oxide.Plugins
                 EnableUnlimitedFuel(mini);
             else
                 AddInitialFuel(mini);
+        }
+
+        private float GetPlayerCooldownSeconds(BasePlayer player)
+        {
+            var grantedCooldownPerms = _config.cooldowns
+                .Where(entry => permission.UserHasPermission(player.UserIDString, entry.Key));
+
+            // Default cooldown to 1 day if they don't have any specific permissions
+            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : 86400;
         }
 
         private void AddInitialFuel(MiniCopter minicopter)
@@ -486,7 +484,7 @@ namespace Oxide.Plugins
                 ["mini_current"] = "You already have a minicopter!",
                 ["mini_notcurrent"] = "You do not have a minicopter!",
                 ["mini_priv"] = "Cannot spawn a minicopter because you're building blocked!",
-                ["mini_timeleft"] = "You have {0} minutes until your cooldown ends",
+                ["mini_timeleft_new"] = "You have <color=red>{0}</color> until your cooldown ends",
                 ["mini_sdistance"] = "You're trying to spawn the minicopter too far away!",
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
                 ["mini_mounted"] = "A player is currenty mounted on the minicopter!",
@@ -501,7 +499,7 @@ namespace Oxide.Plugins
                 ["mini_current"] = "У вас уже есть мини-вертолет!",
                 ["mini_notcurrent"] = "У вас нет мини-вертолета!",
                 ["mini_priv"] = "Невозможно вызвать мини-вертолет, потому что ваше здание заблокировано!",
-                ["mini_timeleft"] = "У вас есть {0} минута, пока ваше время восстановления не закончится.",
+                ["mini_timeleft_new"] = "У вас есть <color=red>{0}</color>, пока ваше время восстановления не закончится.",
                 ["mini_sdistance"] = "Вы пытаетесь породить миникоптер слишком далеко!",
                 ["mini_terrain"] = "Попытка породить мини-вертолет вне местности!",
                 ["mini_mounted"] = "Игрок в данный момент сидит на миникоптере или это слишком далеко!",
@@ -516,7 +514,7 @@ namespace Oxide.Plugins
                 ["mini_current"] = "Du hast bereits einen minikopter!",
                 ["mini_notcurrent"] = "Du hast keine minikopter!",
                 ["mini_priv"] = "Ein minikopter kann nicht hervorgebracht, da das bauwerk ist verstopft!",
-                ["mini_timeleft"] = "Du hast {0} minuten, bis ihre abklingzeit ende",
+                ["mini_timeleft_new"] = "Du hast <color=red>{0}</color>, bis ihre abklingzeit ende",
                 ["mini_sdistance"] = "Du bist versuchen den minikopter zu weit weg zu spawnen!",
                 ["mini_terrain"] = "Du versucht laichen einen minikopter außerhalb des geländes!",
                 ["mini_mounted"] = "Ein Spieler ist gerade am Minikopter montiert oder es ist zu weit!",
