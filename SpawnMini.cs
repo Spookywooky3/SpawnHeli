@@ -182,7 +182,7 @@ namespace Oxide.Plugins
 
             bool isMounted = mini.AnyMounted();
 
-            if (isMounted && (!_config.CanFetchWhileOccupied || player.GetMountedVehicle() == mini))
+            if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
             {
                 player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
                 return;
@@ -224,7 +224,7 @@ namespace Oxide.Plugins
             if (mini == null)
                 return;
 
-            if (mini.AnyMounted() && (!_config.CanDespawnWhileOccupied || player.GetMountedVehicle() == mini))
+            if (mini.AnyMounted() && (!_config.canDespawnWhileOccupied || player.GetMountedVehicle() == mini))
             {
                 player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
                 return;
@@ -361,10 +361,10 @@ namespace Oxide.Plugins
 
         private void AddInitialFuel(MiniCopter minicopter)
         {
-            if (_config.FuelAmount == 0) return;
+            if (_config.fuelAmount == 0) return;
 
             StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-            int fuelAmount = _config.FuelAmount < 0 ? fuelContainer.allowedItem.stackable : _config.FuelAmount;
+            int fuelAmount = _config.fuelAmount < 0 ? fuelContainer.allowedItem.stackable : _config.fuelAmount;
             fuelContainer.inventory.AddItem(fuelContainer.allowedItem, fuelAmount);
         }
 
@@ -422,16 +422,16 @@ namespace Oxide.Plugins
             public bool canSpawnBuildingBlocked { get; set; }
 
             [JsonProperty("CanDespawnWhileOccupied")]
-            public bool CanDespawnWhileOccupied { get; set; }
+            public bool canDespawnWhileOccupied { get; set; }
 
             [JsonProperty("CanFetchWhileOccupied")]
-            public bool CanFetchWhileOccupied { get; set; }
+            public bool canFetchWhileOccupied { get; set; }
 
             [JsonProperty("PermissionCooldowns")]
             public Dictionary<string, float> cooldowns { get; set; }
 
             [JsonProperty("FuelAmount")]
-            public int FuelAmount { get; set; }
+            public int fuelAmount { get; set; }
 
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly { get; set; }
@@ -446,9 +446,9 @@ namespace Oxide.Plugins
                 noMiniDistance = 300f,
                 assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab",
                 canSpawnBuildingBlocked = false,
-                CanDespawnWhileOccupied = false,
-                CanFetchWhileOccupied = false,
-                FuelAmount = 0,
+                canDespawnWhileOccupied = false,
+                canFetchWhileOccupied = false,
+                fuelAmount = 0,
                 ownerOnly = false,
                 cooldowns = new Dictionary<string, float>()
                 {
