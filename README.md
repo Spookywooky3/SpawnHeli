@@ -31,6 +31,8 @@ bool IsPlayerOwned(MiniCopter);
 {
   "AssetPrefab": "assets/content/vehicles/minicopter/minicopter.entity.prefab", -- Prefab you would like to spawn
   "CanSpawnBuildingBlocked": false,  -- Can player spawn a minicopter while building blocked
+  "CanDespawnWhileOccupied": false,  -- Can player use /nomini while the mini is mounted
+  "CanFetchWhileOccupied": false,  -- Can player use /fmini while the mini is mounted (will dismount players)
   "MaxNoMiniDistance": 300.0, -- The maximum distance the player can be from the minicopter when using /nomini and /fmini (set to -1 for unlimited distance)
   "MaxSpawnDistance": 5.0, -- How far away can the player spawn a minicopter
   "OwnerAndTeamCanMount": false, -- If you want only the owner and their team members to be able to mount the mini set this to true

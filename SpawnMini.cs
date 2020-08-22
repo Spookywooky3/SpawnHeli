@@ -180,7 +180,9 @@ namespace Oxide.Plugins
                     if (mini == null)
                         return;
 
-                    if (mini.AnyMounted())
+                    bool isMounted = mini.AnyMounted();
+
+                    if (isMounted && (!_config.CanFetchWhileOccupied || player.GetMountedVehicle() == mini))
                     {
                         player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
                         return;
@@ -190,6 +192,13 @@ namespace Oxide.Plugins
                     {
                         player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
                         return;
+                    }
+
+                    if (isMounted)
+                    {
+                        // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
+                        foreach (var mountPoint in mini.mountPoints)
+                            mountPoint.mountable?.DismountAllPlayers();
                     }
 
                     Puts(GetDistance(player, mini).ToString());
@@ -219,7 +228,7 @@ namespace Oxide.Plugins
                     if (mini == null)
                         return;
 
-                    if (mini.AnyMounted())
+                    if (mini.AnyMounted() && (!_config.CanDespawnWhileOccupied || player.GetMountedVehicle() == mini))
                     {
                         player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
                         return;
@@ -421,6 +430,12 @@ namespace Oxide.Plugins
             [JsonProperty("CanSpawnBuildingBlocked")]
             public bool canSpawnBuildingBlocked { get; set; }
 
+            [JsonProperty("CanDespawnWhileOccupied")]
+            public bool CanDespawnWhileOccupied { get; set; }
+
+            [JsonProperty("CanFetchWhileOccupied")]
+            public bool CanFetchWhileOccupied { get; set; }
+
             [JsonProperty("PermissionCooldowns")]
             public Dictionary<string, float> cooldowns { get; set; }
 
@@ -437,6 +452,8 @@ namespace Oxide.Plugins
                 noMiniDistance = 300f,
                 assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab",
                 canSpawnBuildingBlocked = false,
+                CanDespawnWhileOccupied = false,
+                CanFetchWhileOccupied = false,
                 ownerOnly = false,
                 cooldowns = new Dictionary<string, float>()
                 {
