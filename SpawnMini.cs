@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.7.0"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.8.0"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -146,11 +146,11 @@ namespace Oxide.Plugins
             
             if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
-                DateTime cooldown = _data.cooldown[player.UserIDString];
-                if (cooldown > DateTime.Now)
+                DateTime lastSpawned = _data.cooldown[player.UserIDString];
+                TimeSpan timeRemaining = CeilingTimeSpan(lastSpawned.AddSeconds(GetPlayerCooldownSeconds(player)) - DateTime.Now);
+                if (timeRemaining.TotalSeconds > 0)
                 {
-                    player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft", this, player.UserIDString),
-                        Math.Round((cooldown - DateTime.Now).TotalMinutes, 2)));
+                    player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft_new", this, player.UserIDString), timeRemaining.ToString("g")));
                     return;
                 }
 
@@ -166,37 +166,42 @@ namespace Oxide.Plugins
             if (!permission.UserHasPermission(player.UserIDString, _fetchMini))
             {
                 player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
+                return;
             }
-            else
+
+            if (!_data.playerMini.ContainsKey(player.UserIDString))
             {
-                if (!_data.playerMini.ContainsKey(player.UserIDString))
-                {
-                    player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
-                }
-                else if (_data.playerMini.ContainsKey(player.UserIDString))
-                {
-                    MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
-
-                    if (mini == null)
-                        return;
-
-                    if (mini.AnyMounted())
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
-                        return;
-                    }
-
-                    if (IsMiniBeyondMaxDistance(player, mini))
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
-                        return;
-                    }
-
-                    Puts(GetDistance(player, mini).ToString());
-                    Vector3 destination = new Vector3(player.transform.position.x, player.transform.position.y + 3.5f, player.transform.position.z + 2);
-                    mini.transform.position = destination;
-                }
+                player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
+                return;
             }
+
+            MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
+
+            if (mini == null)
+                return;
+
+            bool isMounted = mini.AnyMounted();
+
+            if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
+                return;
+            }
+
+            if (IsMiniBeyondMaxDistance(player, mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                return;
+            }
+
+            if (isMounted)
+            {
+                // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
+                foreach (var mountPoint in mini.mountPoints)
+                    mountPoint.mountable?.DismountAllPlayers();
+            }
+
+            mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
         }
 
         [ChatCommand("nomini")]
@@ -205,35 +210,33 @@ namespace Oxide.Plugins
             if (!permission.UserHasPermission(player.UserIDString, _noMini))
             {
                 player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
+                return;
             }
-            else
+            
+            if (!_data.playerMini.ContainsKey(player.UserIDString))
             {
-                if (!_data.playerMini.ContainsKey(player.UserIDString))
-                {
-                    player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
-                }
-                else if (_data.playerMini.ContainsKey(player.UserIDString))
-                {
-                    MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
-
-                    if (mini == null)
-                        return;
-
-                    if (mini.AnyMounted())
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
-                        return;
-                    }
-
-                    if (IsMiniBeyondMaxDistance(player, mini))
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
-                        return;
-                    }
-
-                    BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString])?.Kill();
-                }
+                player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
+                return;
             }
+            
+            MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
+
+            if (mini == null)
+                return;
+
+            if (mini.AnyMounted() && (!_config.canDespawnWhileOccupied || player.GetMountedVehicle() == mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
+                return;
+            }
+
+            if (IsMiniBeyondMaxDistance(player, mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                return;
+            }
+
+            BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString])?.Kill();
         }
 
         [ConsoleCommand("spawnmini.give")]
@@ -257,73 +260,72 @@ namespace Oxide.Plugins
 
         #region Helpers/Functions
 
+        private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
+            new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
+
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
+
+        private Vector3 GetIdealFixedPositionForPlayer(BasePlayer player)
+        {
+            Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
+            return player.transform.position + forward.normalized * 3f + Vector3.up * 2f;
+        }
 
         private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
             Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
 
         private void SpawnMinicopter(BasePlayer player)
         {
-            if (!player.IsBuildingBlocked() || _config.canSpawnBuildingBlocked)
+            if (player.IsBuildingBlocked() && !_config.canSpawnBuildingBlocked)
             {
-                RaycastHit hit;
-                if (Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity,
-                    LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
-                {
-                    if (hit.distance > _config.maxSpawnDistance)
-                    {
-                        player.ChatMessage(lang.GetMessage("mini_sdistance", this, player.UserIDString));
-                    }
-                    else
-                    {
-                        Vector3 position = hit.point + Vector3.up * 2f;
-                        BaseVehicle miniEntity = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
-                        miniEntity.OwnerID = player.userID;
-                        miniEntity.health = _config.spawnHealth;
-                        miniEntity.Spawn();
+                player.ChatMessage(lang.GetMessage("mini_priv", this, player.UserIDString));
+                return;
+            }
 
-                        // Credit Original MyMinicopter Plugin
-                        if (permission.UserHasPermission(player.UserIDString, _noFuel))
-                        {
-                            MiniCopter minicopter = miniEntity as MiniCopter;
+            Vector3 position;
 
-                            if (minicopter == null)
-                                return;
-
-                            EnableUnlimitedFuel(minicopter);
-                        }
-
-                        _data.playerMini.Add(player.UserIDString, miniEntity.net.ID);
-
-                        if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
-                        {
-
-
-                            // Sloppy but works
-                            // TODO: Improve later
-                            Dictionary<string, float> perms = new Dictionary<string, float>();
-                            foreach (var perm in _config.cooldowns)
-                                if (permission.UserHasPermission(player.UserIDString, perm.Key))
-                                    perms.Add(perm.Key, perm.Value);
-
-                            if (!perms.IsEmpty())
-                                _data.cooldown.Add(player.UserIDString, DateTime.Now.AddSeconds(perms.Aggregate((l, r) => l.Value < r.Value ? l : r).Value));
-
-                            // Incase players don't have any cooldown permission default to one day
-                            if (!_data.cooldown.ContainsKey(player.UserIDString))
-                                _data.cooldown.Add(player.UserIDString, DateTime.Now.AddDays(1));
-                        }
-                    }
-                }
-                else
-                {
-                    player.ChatMessage(lang.GetMessage("mini_terrain", this, player.UserIDString));
-                }
+            if (_config.useFixedSpawnDistance)
+            {
+                position = GetIdealFixedPositionForPlayer(player);
             }
             else
             {
-                player.ChatMessage(lang.GetMessage("mini_priv", this, player.UserIDString));
+                RaycastHit hit;
+                if (!Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity,
+                    LayerMask.GetMask("Construction", "Default", "Deployed", "Resource", "Terrain", "Water", "World")))
+                {
+                    player.ChatMessage(lang.GetMessage("mini_terrain", this, player.UserIDString));
+                    return;
+                }
+
+                if (hit.distance > _config.maxSpawnDistance)
+                {
+                    player.ChatMessage(lang.GetMessage("mini_sdistance", this, player.UserIDString));
+                    return;
+                }
+
+                position = hit.point + Vector3.up * 2f;
+            }
+
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
+            if (mini == null) return;
+
+            mini.OwnerID = player.userID;
+            mini.health = _config.spawnHealth;
+            mini.Spawn();
+
+            // Credit Original MyMinicopter Plugin
+            if (permission.UserHasPermission(player.UserIDString, _noFuel))
+                EnableUnlimitedFuel(mini);
+            else
+                AddInitialFuel(mini);
+
+            _data.playerMini.Add(player.UserIDString, mini.net.ID);
+
+            if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
+            {
+                _data.cooldown.Add(player.UserIDString, DateTime.Now);
             }
         }
 
@@ -341,31 +343,37 @@ namespace Oxide.Plugins
                 return;
             }
 
-            // Credit Original MyMinicopter Plugin
-            Quaternion rotation = player.GetNetworkRotation();
-            Vector3 forward = rotation * Vector3.forward;
-            Vector3 straight = Vector3.Cross(Vector3.Cross(Vector3.up, forward), Vector3.up).normalized;
-            Vector3 position = player.transform.position + straight * 5f;
-            position.y = player.transform.position.y + 2f;
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player)) as MiniCopter;
+            if (mini == null) return;
 
-            if (position == null) return;
-            BaseVehicle vehicleMini = (BaseVehicle)GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player));
-            if (vehicleMini == null) return;
-            vehicleMini.OwnerID = player.userID;
-            vehicleMini.Spawn();
+            mini.OwnerID = player.userID;
+            mini.Spawn();
             // End
 
-            _data.playerMini.Add(player.UserIDString, vehicleMini.net.ID);
+            _data.playerMini.Add(player.UserIDString, mini.net.ID);
 
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
-            {
-                MiniCopter minicopter = vehicleMini as MiniCopter;
+                EnableUnlimitedFuel(mini);
+            else
+                AddInitialFuel(mini);
+        }
 
-                if (minicopter == null)
-                    return;
+        private float GetPlayerCooldownSeconds(BasePlayer player)
+        {
+            var grantedCooldownPerms = _config.cooldowns
+                .Where(entry => permission.UserHasPermission(player.UserIDString, entry.Key));
 
-                EnableUnlimitedFuel(minicopter);
-            }
+            // Default cooldown to 1 day if they don't have any specific permissions
+            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : 86400;
+        }
+
+        private void AddInitialFuel(MiniCopter minicopter)
+        {
+            if (_config.fuelAmount == 0) return;
+
+            StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
+            int fuelAmount = _config.fuelAmount < 0 ? fuelContainer.allowedItem.stackable : _config.fuelAmount;
+            fuelContainer.inventory.AddItem(fuelContainer.allowedItem, fuelAmount);
         }
 
         private void EnableUnlimitedFuel(MiniCopter minicopter)
@@ -373,7 +381,7 @@ namespace Oxide.Plugins
             minicopter.fuelPerSec = 0f;
 
             StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-            ItemManager.CreateByItemID(-946369541, 1)?.MoveToContainer(fuelContainer.inventory);
+            fuelContainer.inventory.AddItem(fuelContainer.allowedItem, 1);
             fuelContainer.SetFlag(BaseEntity.Flags.Locked, true);
         }
 
@@ -412,6 +420,9 @@ namespace Oxide.Plugins
             [JsonProperty("MaxSpawnDistance")]
             public float maxSpawnDistance { get; set; }
 
+            [JsonProperty("UseFixedSpawnDistance")]
+            public bool useFixedSpawnDistance { get; set; }
+
             [JsonProperty("MaxNoMiniDistance")]
             public float noMiniDistance { get; set; }
 
@@ -421,8 +432,17 @@ namespace Oxide.Plugins
             [JsonProperty("CanSpawnBuildingBlocked")]
             public bool canSpawnBuildingBlocked { get; set; }
 
+            [JsonProperty("CanDespawnWhileOccupied")]
+            public bool canDespawnWhileOccupied { get; set; }
+
+            [JsonProperty("CanFetchWhileOccupied")]
+            public bool canFetchWhileOccupied { get; set; }
+
             [JsonProperty("PermissionCooldowns")]
             public Dictionary<string, float> cooldowns { get; set; }
+
+            [JsonProperty("FuelAmount")]
+            public int fuelAmount { get; set; }
 
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly { get; set; }
@@ -437,6 +457,9 @@ namespace Oxide.Plugins
                 noMiniDistance = 300f,
                 assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab",
                 canSpawnBuildingBlocked = false,
+                canDespawnWhileOccupied = false,
+                canFetchWhileOccupied = false,
+                fuelAmount = 0,
                 ownerOnly = false,
                 cooldowns = new Dictionary<string, float>()
                 {
@@ -461,7 +484,7 @@ namespace Oxide.Plugins
                 ["mini_current"] = "You already have a minicopter!",
                 ["mini_notcurrent"] = "You do not have a minicopter!",
                 ["mini_priv"] = "Cannot spawn a minicopter because you're building blocked!",
-                ["mini_timeleft"] = "You have {0} minutes until your cooldown ends",
+                ["mini_timeleft_new"] = "You have <color=red>{0}</color> until your cooldown ends",
                 ["mini_sdistance"] = "You're trying to spawn the minicopter too far away!",
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
                 ["mini_mounted"] = "A player is currenty mounted on the minicopter!",
@@ -476,7 +499,7 @@ namespace Oxide.Plugins
                 ["mini_current"] = "У вас уже есть мини-вертолет!",
                 ["mini_notcurrent"] = "У вас нет мини-вертолета!",
                 ["mini_priv"] = "Невозможно вызвать мини-вертолет, потому что ваше здание заблокировано!",
-                ["mini_timeleft"] = "У вас есть {0} минута, пока ваше время восстановления не закончится.",
+                ["mini_timeleft_new"] = "У вас есть <color=red>{0}</color>, пока ваше время восстановления не закончится.",
                 ["mini_sdistance"] = "Вы пытаетесь породить миникоптер слишком далеко!",
                 ["mini_terrain"] = "Попытка породить мини-вертолет вне местности!",
                 ["mini_mounted"] = "Игрок в данный момент сидит на миникоптере или это слишком далеко!",
@@ -491,7 +514,7 @@ namespace Oxide.Plugins
                 ["mini_current"] = "Du hast bereits einen minikopter!",
                 ["mini_notcurrent"] = "Du hast keine minikopter!",
                 ["mini_priv"] = "Ein minikopter kann nicht hervorgebracht, da das bauwerk ist verstopft!",
-                ["mini_timeleft"] = "Du hast {0} minuten, bis ihre abklingzeit ende",
+                ["mini_timeleft_new"] = "Du hast <color=red>{0}</color>, bis ihre abklingzeit ende",
                 ["mini_sdistance"] = "Du bist versuchen den minikopter zu weit weg zu spawnen!",
                 ["mini_terrain"] = "Du versucht laichen einen minikopter außerhalb des geländes!",
                 ["mini_mounted"] = "Ein Spieler ist gerade am Minikopter montiert oder es ist zu weit!",
