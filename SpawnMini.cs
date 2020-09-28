@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.8.0"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.8.1"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -269,6 +269,7 @@ namespace Oxide.Plugins
         private Vector3 GetIdealFixedPositionForPlayer(BasePlayer player)
         {
             Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
+            forward.y = 0;
             return player.transform.position + forward.normalized * 3f + Vector3.up * 2f;
         }
 
