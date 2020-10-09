@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.8.1"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.8.2"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -101,7 +101,7 @@ namespace Oxide.Plugins
                 return null;
 
             var mini = entity.GetVehicleParent() as MiniCopter;
-            if (mini == null || mini is ScrapTransportHelicopter || mini.OwnerID == 0) return null;
+            if (mini == null || mini is ScrapTransportHelicopter || mini.OwnerID == 0 || !IsPlayerOwned(mini)) return null;
 
             if (mini.OwnerID != player.userID)
             {
