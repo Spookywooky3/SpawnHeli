@@ -90,7 +90,7 @@ namespace Oxide.Plugins
 
             if (_data.playerMini.ContainsValue(entity.net.ID))
                 if (permission.UserHasPermission(entity.OwnerID.ToString(), _noDecay) && info.damageTypes.Has(Rust.DamageType.Decay))
-                    return false;
+                    return true;
 
             return null;
         }
