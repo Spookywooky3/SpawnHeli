@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.8.2"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.8.3"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -58,6 +58,8 @@ namespace Oxide.Plugins
         }
 
         void Unload() => WriteSaveData();
+
+        void OnServerSave() => WriteSaveData();
 
         void OnNewSave()
         {
