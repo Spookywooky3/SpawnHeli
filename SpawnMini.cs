@@ -367,7 +367,7 @@ namespace Oxide.Plugins
                 .Where(entry => permission.UserHasPermission(player.UserIDString, entry.Key));
 
             // Default cooldown to 1 day if they don't have any specific permissions
-            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : 86400;
+            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : _config.defaultCooldown;
         }
 
         private void AddInitialFuel(MiniCopter minicopter)
@@ -444,12 +444,15 @@ namespace Oxide.Plugins
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly = false;
 
+            [JsonProperty("DefaultCooldown")]
+            public float defaultCooldown = 86400f;
+
             [JsonProperty("PermissionCooldowns")]
             public Dictionary<string, float> cooldowns = new Dictionary<string, float>()
             {
-                ["spawnmini.tier1"] = 86400f,
-                ["spawnmini.tier2"] = 43200f,
-                ["spawnmini.tier3"] = 21600f,
+                ["spawnmini.tier1"] = 43200f,
+                ["spawnmini.tier2"] = 21600f,
+                ["spawnmini.tier3"] = 10800f,
             };
 
             [JsonProperty("SpawnHealth")]
