@@ -45,7 +45,8 @@ Default configuration:
     "spawnmini.tier2": 21600.0,
     "spawnmini.tier3": 10800.0
   },
-  "SpawnHealth": 750.0
+  "SpawnHealth": 750.0,
+  "DestroyOnDisconnect": false
 }
 ```
 
@@ -64,6 +65,7 @@ Options explained:
   * If a player has no cooldown permissions, `DefaultCooldown` will be used for them.
   * You can add as many cooldown tiers as you would like, but you should prefix them all with `spawnmini.` to prevent warnings in the server logs.
 * `SpawnHealth` -- The health minicopters will spawn with.
+* `DestroyOnDisconnect` (`true` or `false`) -- Set to `true` to destroy each spawned minicopter when its owner disconnects from the server. If the minicopter is mounted, it will be destroyed when fully dismounted.
 
 ## Localization
 

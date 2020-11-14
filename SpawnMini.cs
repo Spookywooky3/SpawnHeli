@@ -44,6 +44,12 @@ namespace Oxide.Plugins
 
             if (!_config.ownerOnly)
                 Unsubscribe(nameof(CanMountEntity));
+
+            if (!_config.destroyOnDisconnect)
+            {
+                Unsubscribe(nameof(OnPlayerDisconnected));
+                Unsubscribe(nameof(OnEntityDismounted));
+            }
         }
 
         void OnServerInitialized()
@@ -114,6 +120,46 @@ namespace Oxide.Plugins
                 return false;
             }
             return null;
+        }
+
+        void OnPlayerDisconnected(BasePlayer player)
+        {
+            if (player == null)
+                return;
+
+            uint miniNetId;
+            if (!_data.playerMini.TryGetValue(player.UserIDString, out miniNetId))
+                return;
+
+            var mini = BaseNetworkable.serverEntities.Find(miniNetId) as MiniCopter;
+            if (mini == null)
+                return;
+
+            NextTick(() =>
+            {
+                if (mini == null)
+                    return;
+
+                // Despawn minicopter when the owner disconnects
+                // If mounted, we will despawn it later when all players dismount
+                if (!mini.AnyMounted())
+                    mini.Kill();
+            });
+        }
+
+        void OnEntityDismounted(BaseVehicleSeat seat)
+        {
+            if (seat == null)
+                return;
+
+            var mini = seat.GetVehicleParent() as MiniCopter;
+            if (mini == null || mini.OwnerID == 0 || !IsPlayerOwned(mini) || mini.AnyMounted())
+                return;
+
+            // Despawn minicopter when fully dismounted, if the owner player has disconnected
+            var ownerPlayer = BasePlayer.FindByID(mini.OwnerID);
+            if (ownerPlayer == null || !ownerPlayer.IsConnected)
+                mini.Kill();
         }
 
         #endregion
@@ -457,6 +503,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("SpawnHealth")]
             public float spawnHealth = 750f;
+
+            [JsonProperty("DestroyOnDisconnect")]
+            public bool destroyOnDisconnect = false;
         }
 
         private PluginConfig GetDefaultConfig() => new PluginConfig();
