@@ -1,13 +1,15 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using Oxide.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.8.3"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.9.0"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -25,8 +27,6 @@ namespace Oxide.Plugins
 
         private void Init()
         {
-            _config = Config.ReadObject<PluginConfig>();
-
             permission.RegisterPermission(_spawnMini, this);
             permission.RegisterPermission(_noCooldown, this);
             permission.RegisterPermission(_noMini, this);
@@ -44,6 +44,12 @@ namespace Oxide.Plugins
 
             if (!_config.ownerOnly)
                 Unsubscribe(nameof(CanMountEntity));
+
+            if (!_config.destroyOnDisconnect)
+            {
+                Unsubscribe(nameof(OnPlayerDisconnected));
+                Unsubscribe(nameof(OnEntityDismounted));
+            }
         }
 
         void OnServerInitialized()
@@ -114,6 +120,46 @@ namespace Oxide.Plugins
                 return false;
             }
             return null;
+        }
+
+        void OnPlayerDisconnected(BasePlayer player)
+        {
+            if (player == null)
+                return;
+
+            uint miniNetId;
+            if (!_data.playerMini.TryGetValue(player.UserIDString, out miniNetId))
+                return;
+
+            var mini = BaseNetworkable.serverEntities.Find(miniNetId) as MiniCopter;
+            if (mini == null)
+                return;
+
+            NextTick(() =>
+            {
+                if (mini == null)
+                    return;
+
+                // Despawn minicopter when the owner disconnects
+                // If mounted, we will despawn it later when all players dismount
+                if (!mini.AnyMounted())
+                    mini.Kill();
+            });
+        }
+
+        void OnEntityDismounted(BaseVehicleSeat seat)
+        {
+            if (seat == null)
+                return;
+
+            var mini = seat.GetVehicleParent() as MiniCopter;
+            if (mini == null || mini.OwnerID == 0 || !IsPlayerOwned(mini) || mini.AnyMounted())
+                return;
+
+            // Despawn minicopter when fully dismounted, if the owner player has disconnected
+            var ownerPlayer = BasePlayer.FindByID(mini.OwnerID);
+            if (ownerPlayer == null || !ownerPlayer.IsConnected)
+                mini.Kill();
         }
 
         #endregion
@@ -367,7 +413,7 @@ namespace Oxide.Plugins
                 .Where(entry => permission.UserHasPermission(player.UserIDString, entry.Key));
 
             // Default cooldown to 1 day if they don't have any specific permissions
-            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : 86400;
+            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : _config.defaultCooldown;
         }
 
         private void AddInitialFuel(MiniCopter minicopter)
@@ -404,7 +450,7 @@ namespace Oxide.Plugins
 
         #endregion
 
-        #region Classes And Overrides
+        #region Data & Configuration
 
         private void WriteSaveData() =>
             Interface.Oxide.DataFileSystem.WriteObject(Name, _data);
@@ -415,68 +461,58 @@ namespace Oxide.Plugins
             public Dictionary<string, DateTime> cooldown = new Dictionary<string, DateTime>();
         }
 
-        class PluginConfig
+        class PluginConfig : SerializableConfiguration
         {
             [JsonProperty("AssetPrefab")]
-            public string assetPrefab { get; set; }
-
-            [JsonProperty("MaxSpawnDistance")]
-            public float maxSpawnDistance { get; set; }
-
-            [JsonProperty("UseFixedSpawnDistance")]
-            public bool useFixedSpawnDistance { get; set; }
-
-            [JsonProperty("MaxNoMiniDistance")]
-            public float noMiniDistance { get; set; }
-
-            [JsonProperty("SpawnHealth")]
-            public float spawnHealth { get; set; }
-
-            [JsonProperty("CanSpawnBuildingBlocked")]
-            public bool canSpawnBuildingBlocked { get; set; }
+            public string assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab";
 
             [JsonProperty("CanDespawnWhileOccupied")]
-            public bool canDespawnWhileOccupied { get; set; }
+            public bool canDespawnWhileOccupied = false;
 
             [JsonProperty("CanFetchWhileOccupied")]
-            public bool canFetchWhileOccupied { get; set; }
+            public bool canFetchWhileOccupied = false;
 
-            [JsonProperty("PermissionCooldowns")]
-            public Dictionary<string, float> cooldowns { get; set; }
+            [JsonProperty("CanSpawnBuildingBlocked")]
+            public bool canSpawnBuildingBlocked = false;
 
             [JsonProperty("FuelAmount")]
-            public int fuelAmount { get; set; }
+            public int fuelAmount = 0;
+
+            [JsonProperty("MaxNoMiniDistance")]
+            public float noMiniDistance = 300f;
+
+            [JsonProperty("MaxSpawnDistance")]
+            public float maxSpawnDistance = 5f;
+
+            [JsonProperty("UseFixedSpawnDistance")]
+            public bool useFixedSpawnDistance = false;
 
             [JsonProperty("OwnerAndTeamCanMount")]
-            public bool ownerOnly { get; set; }
-        }
+            public bool ownerOnly = false;
 
-        private PluginConfig GetDefaultConfig()
-        {
-            return new PluginConfig
+            [JsonProperty("DefaultCooldown")]
+            public float defaultCooldown = 86400f;
+
+            [JsonProperty("PermissionCooldowns")]
+            public Dictionary<string, float> cooldowns = new Dictionary<string, float>()
             {
-                maxSpawnDistance = 5f,
-                spawnHealth = 750f,
-                noMiniDistance = 300f,
-                assetPrefab = "assets/content/vehicles/minicopter/minicopter.entity.prefab",
-                canSpawnBuildingBlocked = false,
-                canDespawnWhileOccupied = false,
-                canFetchWhileOccupied = false,
-                fuelAmount = 0,
-                ownerOnly = false,
-                cooldowns = new Dictionary<string, float>()
-                {
-                    ["spawnmini.tier1"] = 86400f,
-                    ["spawnmini.tier2"] = 43200f,
-                    ["spawnmini.tier3"] = 21600f,
-                }
+                ["spawnmini.tier1"] = 43200f,
+                ["spawnmini.tier2"] = 21600f,
+                ["spawnmini.tier3"] = 10800f,
             };
+
+            [JsonProperty("SpawnHealth")]
+            public float spawnHealth = 750f;
+
+            [JsonProperty("DestroyOnDisconnect")]
+            public bool destroyOnDisconnect = false;
         }
 
-        protected override void LoadDefaultConfig()
-        {
-            Config.WriteObject(GetDefaultConfig(), true);
-        }
+        private PluginConfig GetDefaultConfig() => new PluginConfig();
+
+        #endregion
+
+        #region Localization
 
         protected override void LoadDefaultMessages()
         {
@@ -525,6 +561,110 @@ namespace Oxide.Plugins
                 ["mini_rcon"] = "Dieser Befehl kann nur von RCON ausgeführt werden!",
                 ["mini_canmount"] = "Sie sind nicht der Besitzer dieses Minicopters oder im Team des Besitzers!"
             }, this, "de");
+        }
+
+        #endregion
+
+        #region Configuration Boilerplate
+
+        internal class SerializableConfiguration
+        {
+            public string ToJson() => JsonConvert.SerializeObject(this);
+
+            public Dictionary<string, object> ToDictionary() => JsonHelper.Deserialize(ToJson()) as Dictionary<string, object>;
+        }
+
+        internal static class JsonHelper
+        {
+            public static object Deserialize(string json) => ToObject(JToken.Parse(json));
+
+            private static object ToObject(JToken token)
+            {
+                switch (token.Type)
+                {
+                    case JTokenType.Object:
+                        return token.Children<JProperty>()
+                                    .ToDictionary(prop => prop.Name,
+                                                  prop => ToObject(prop.Value));
+
+                    case JTokenType.Array:
+                        return token.Select(ToObject).ToList();
+
+                    default:
+                        return ((JValue)token).Value;
+                }
+            }
+        }
+
+        private bool MaybeUpdateConfig(SerializableConfiguration config)
+        {
+            var currentWithDefaults = config.ToDictionary();
+            var currentRaw = Config.ToDictionary(x => x.Key, x => x.Value);
+            return MaybeUpdateConfigDict(currentWithDefaults, currentRaw);
+        }
+
+        private bool MaybeUpdateConfigDict(Dictionary<string, object> currentWithDefaults, Dictionary<string, object> currentRaw)
+        {
+            bool changed = false;
+
+            foreach (var key in currentWithDefaults.Keys)
+            {
+                object currentRawValue;
+                if (currentRaw.TryGetValue(key, out currentRawValue))
+                {
+                    var defaultDictValue = currentWithDefaults[key] as Dictionary<string, object>;
+                    var currentDictValue = currentRawValue as Dictionary<string, object>;
+
+                    if (defaultDictValue != null)
+                    {
+                        // Don't update nested keys since the cooldown tiers might be customized
+                        if (currentDictValue == null)
+                        {
+                            currentRaw[key] = currentWithDefaults[key];
+                            changed = true;
+                        }
+                    }
+                }
+                else
+                {
+                    currentRaw[key] = currentWithDefaults[key];
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
+        protected override void LoadDefaultConfig() => _config = GetDefaultConfig();
+
+        protected override void LoadConfig()
+        {
+            base.LoadConfig();
+            try
+            {
+                _config = Config.ReadObject<PluginConfig>();
+                if (_config == null)
+                {
+                    throw new JsonException();
+                }
+
+                if (MaybeUpdateConfig(_config))
+                {
+                    PrintWarning("Configuration appears to be outdated; updating and saving");
+                    SaveConfig();
+                }
+            }
+            catch
+            {
+                PrintWarning($"Configuration file {Name}.json is invalid; using defaults");
+                LoadDefaultConfig();
+            }
+        }
+
+        protected override void SaveConfig()
+        {
+            Puts($"Configuration changes saved to {Name}.json");
+            Config.WriteObject(_config, true);
         }
 
         #endregion
