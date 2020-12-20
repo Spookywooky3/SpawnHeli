@@ -36,9 +36,9 @@ Default configuration:
   "CanFetchWhileOccupied": false,
   "CanSpawnBuildingBlocked": false,
   "FuelAmount": 0,
-  "MaxNoMiniDistance": 300.0,
+  "MaxNoMiniDistance": -1.0,
   "MaxSpawnDistance": 5.0,
-  "UseFixedSpawnDistance": false,
+  "UseFixedSpawnDistance": true,
   "OwnerAndTeamCanMount": false,
   "DefaultCooldown": 86400.0,
   "PermissionCooldowns": {

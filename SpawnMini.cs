@@ -523,13 +523,13 @@ namespace Oxide.Plugins
             public int fuelAmount = 0;
 
             [JsonProperty("MaxNoMiniDistance")]
-            public float noMiniDistance = 300f;
+            public float noMiniDistance = -1;
 
             [JsonProperty("MaxSpawnDistance")]
             public float maxSpawnDistance = 5f;
 
             [JsonProperty("UseFixedSpawnDistance")]
-            public bool useFixedSpawnDistance = false;
+            public bool useFixedSpawnDistance = true;
 
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly = false;
