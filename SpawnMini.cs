@@ -167,7 +167,7 @@ namespace Oxide.Plugins
         #region Commands
 
         [ChatCommand("mymini")]
-        private void GiveMinicopter(BasePlayer player, string command, string[] args)
+        private void MyMiniCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
@@ -279,17 +279,40 @@ namespace Oxide.Plugins
         [ConsoleCommand("spawnmini.give")]
         private void GiveMiniConsole(ConsoleSystem.Arg arg)
         {
-            if (arg.IsClientside)
+            if (arg.IsClientside || !arg.IsRcon)
                 return;
 
-            if (arg.Args == null)
+            var args = arg.Args;
+            if (args == null || args.Length == 0)
             {
-                Puts("Please put a valid steam64 id");
+                Puts("Syntax: spawnmini.give <name or steamid>");
                 return;
             }
-            else if (arg.Args.Length == 1 && arg.IsRcon)
+
+            var player = BasePlayer.Find(args[0]);
+            if (player == null)
             {
-                SpawnMinicopter(arg.Args[0]);
+                PrintError($"No player found matching '{args[0]}'");
+                return;
+            }
+
+            if (args.Length > 1)
+            {
+                float x, y, z;
+                if (args.Length < 4 ||
+                    !float.TryParse(args[1], out x) ||
+                    !float.TryParse(args[2], out y) ||
+                    !float.TryParse(args[3], out z))
+                {
+                    Puts($"Syntax: spawnmini.give <name or steamid> <x> <y> <z>");
+                    return;
+                }
+
+                GiveMinicopter(player, new Vector3(x, y, z), useCustomPosition: true);
+            }
+            else
+            {
+                GiveMinicopter(player);
             }
         }
 
@@ -403,26 +426,22 @@ namespace Oxide.Plugins
             }
         }
 
-        private void SpawnMinicopter(string id)
+        private void GiveMinicopter(BasePlayer player, Vector3 customPosition = default(Vector3), bool useCustomPosition = false)
         {
-            // Use find incase they put their username
-            BasePlayer player = BasePlayer.Find(id);
-
-            if (player == null)
-                return;
-
-            if (_data.playerMini.ContainsKey(player.UserIDString))
+            if (FindPlayerMini(player) != null)
             {
                 player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
                 return;
             }
 
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player)) as MiniCopter;
+            var position = useCustomPosition ? customPosition : GetIdealFixedPositionForPlayer(player);
+            var rotation = useCustomPosition ? Quaternion.identity : GetIdealRotationForPlayer(player);
+
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, rotation) as MiniCopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
             mini.Spawn();
-            // End
 
             _data.playerMini.Add(player.UserIDString, mini.net.ID);
 

@@ -15,12 +15,13 @@
 
 ## Server Commands
 
-* `spawnmini.give <steamid or name>` -- Spawn a minicopter for a specific player
+* `spawnmini.give <name or steamid>` -- Spawn a minicopter for a specific player using their name or steamid64
+* `spawnmini.give <name or steamid> <x> <y> <z>` -- Spawn a minicopter for a specific player at the designated coordinates
 
 ## For Developers
 
 ```csharp
-void SpawnMinicopter(BasePlayer/string);
+void SpawnMinicopter(BasePlayer);
 float GetDistance(BasePlayer, MiniCopter);
 bool IsPlayerOwned(MiniCopter);
 ```
