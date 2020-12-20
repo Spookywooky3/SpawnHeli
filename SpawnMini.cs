@@ -181,6 +181,9 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (SpawnWasBlocked(player))
+                return;
+
             if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
                 DateTime lastSpawned = _data.cooldown[player.UserIDString];
@@ -226,6 +229,9 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (FetchWasBlocked(player, mini))
+                return;
+
             if (isMounted)
             {
                 // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
@@ -264,6 +270,9 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (DespawnWasBlocked(player, mini))
+                return;
+
             BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString])?.Kill();
         }
 
@@ -287,6 +296,24 @@ namespace Oxide.Plugins
         #endregion
 
         #region Helpers/Functions
+
+        private bool SpawnWasBlocked(BasePlayer player)
+        {
+            object hookResult = Interface.CallHook("OnMyMiniSpawn", player);
+            return hookResult is bool && (bool)hookResult == false;
+        }
+
+        private bool FetchWasBlocked(BasePlayer player, MiniCopter mini)
+        {
+            object hookResult = Interface.CallHook("OnMyMiniFetch", player, mini);
+            return hookResult is bool && (bool)hookResult == false;
+        }
+
+        private bool DespawnWasBlocked(BasePlayer player, MiniCopter mini)
+        {
+            object hookResult = Interface.CallHook("OnMyMiniDespawn", player, mini);
+            return hookResult is bool && (bool)hookResult == false;
+        }
 
         private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
             new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);

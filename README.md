@@ -77,6 +77,29 @@ Spawn Mini supports English, Russian, and German; and you can also add more lang
 
 If you have any ideas/suggestions I would love to hear them. If you have any issues use the Plugin Support section.
 
+## Developer Hooks
+
+```csharp
+object OnMyMiniSpawn(BasePlayer player)
+```
+- Called when a player uses `/mymini`
+- Returning `false` will prevent spawning the minicopter
+- Returning `null` will result in the default behavior
+
+```csharp
+object OnMyMiniFetch(BasePlayer player, MiniCopter mini)
+```
+- Called when a player uses `/fmini`
+- Returning `false` will prevent fetching the minicopter
+- Returning `null` will result in the default behavior
+
+```csharp
+object OnMyMiniDespawn(BasePlayer player, MiniCopter mini)
+```
+- Called when a player uses `/nomini`
+- Returning `false` will prevent despawning the minicopter
+- Returning `null` will result in the default behavior
+
 ## Credits
 
 * **SpooksAU**, the current maintainer
