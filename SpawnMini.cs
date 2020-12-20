@@ -175,23 +175,12 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (_data.playerMini.ContainsKey(player.UserIDString))
+            if (FindPlayerMini(player) != null)
             {
-                // Fix a potential data file desync where the mini doesn't exist anymore
-                // Desyncs should be rare but are not possible to 100% prevent
-                // They can happen if the mini is destroyed while the plugin is unloaded
-                // Or if someone edits the data file manually
-                if (BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) == null)
-                {
-                    _data.playerMini.Remove(player.UserIDString);
-                }
-                else
-                {
-                    player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
-                    return;
-                }
+                player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                return;
             }
-            
+
             if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
                 DateTime lastSpawned = _data.cooldown[player.UserIDString];
@@ -217,19 +206,14 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (!_data.playerMini.ContainsKey(player.UserIDString))
+            var mini = FindPlayerMini(player);
+            if (mini == null)
             {
                 player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
                 return;
             }
 
-            MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
-
-            if (mini == null)
-                return;
-
             bool isMounted = mini.AnyMounted();
-
             if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
             {
                 player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
@@ -260,17 +244,13 @@ namespace Oxide.Plugins
                 player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
                 return;
             }
-            
-            if (!_data.playerMini.ContainsKey(player.UserIDString))
+
+            var mini = FindPlayerMini(player);
+            if (mini == null)
             {
                 player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
                 return;
             }
-            
-            MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
-
-            if (mini == null)
-                return;
 
             if (mini.AnyMounted() && (!_config.canDespawnWhileOccupied || player.GetMountedVehicle() == mini))
             {
@@ -323,6 +303,24 @@ namespace Oxide.Plugins
 
         private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
             Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
+
+        private MiniCopter FindPlayerMini(BasePlayer player)
+        {
+            uint miniNetId;
+            if (!_data.playerMini.TryGetValue(player.UserIDString, out miniNetId))
+                return null;
+
+            var mini = BaseNetworkable.serverEntities.Find(miniNetId) as MiniCopter;
+
+            // Fix a potential data file desync where the mini doesn't exist anymore
+            // Desyncs should be rare but are not possible to 100% prevent
+            // They can happen if the mini is destroyed while the plugin is unloaded
+            // Or if someone edits the data file manually
+            if (mini == null)
+                _data.playerMini.Remove(player.UserIDString);
+
+            return mini;
+        }
 
         private void SpawnMinicopter(BasePlayer player)
         {
