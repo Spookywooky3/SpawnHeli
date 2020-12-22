@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.9.0"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.10.0"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -167,7 +167,7 @@ namespace Oxide.Plugins
         #region Commands
 
         [ChatCommand("mymini")]
-        private void GiveMinicopter(BasePlayer player, string command, string[] args)
+        private void MyMiniCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
@@ -175,23 +175,15 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (_data.playerMini.ContainsKey(player.UserIDString))
+            if (FindPlayerMini(player) != null)
             {
-                // Fix a potential data file desync where the mini doesn't exist anymore
-                // Desyncs should be rare but are not possible to 100% prevent
-                // They can happen if the mini is destroyed while the plugin is unloaded
-                // Or if someone edits the data file manually
-                if (BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) == null)
-                {
-                    _data.playerMini.Remove(player.UserIDString);
-                }
-                else
-                {
-                    player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
-                    return;
-                }
+                player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                return;
             }
-            
+
+            if (SpawnWasBlocked(player))
+                return;
+
             if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
                 DateTime lastSpawned = _data.cooldown[player.UserIDString];
@@ -217,19 +209,14 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (!_data.playerMini.ContainsKey(player.UserIDString))
+            var mini = FindPlayerMini(player);
+            if (mini == null)
             {
                 player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
                 return;
             }
 
-            MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
-
-            if (mini == null)
-                return;
-
             bool isMounted = mini.AnyMounted();
-
             if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
             {
                 player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
@@ -241,6 +228,9 @@ namespace Oxide.Plugins
                 player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
                 return;
             }
+
+            if (FetchWasBlocked(player, mini))
+                return;
 
             if (isMounted)
             {
@@ -260,17 +250,13 @@ namespace Oxide.Plugins
                 player.ChatMessage(lang.GetMessage("mini_perm", this, player.UserIDString));
                 return;
             }
-            
-            if (!_data.playerMini.ContainsKey(player.UserIDString))
+
+            var mini = FindPlayerMini(player);
+            if (mini == null)
             {
                 player.ChatMessage(lang.GetMessage("mini_notcurrent", this, player.UserIDString));
                 return;
             }
-            
-            MiniCopter mini = BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString]) as MiniCopter;
-
-            if (mini == null)
-                return;
 
             if (mini.AnyMounted() && (!_config.canDespawnWhileOccupied || player.GetMountedVehicle() == mini))
             {
@@ -284,29 +270,73 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (DespawnWasBlocked(player, mini))
+                return;
+
             BaseNetworkable.serverEntities.Find(_data.playerMini[player.UserIDString])?.Kill();
         }
 
         [ConsoleCommand("spawnmini.give")]
         private void GiveMiniConsole(ConsoleSystem.Arg arg)
         {
-            if (arg.IsClientside)
+            if (arg.IsClientside || !arg.IsRcon)
                 return;
 
-            if (arg.Args == null)
+            var args = arg.Args;
+            if (args == null || args.Length == 0)
             {
-                Puts("Please put a valid steam64 id");
+                Puts("Syntax: spawnmini.give <name or steamid>");
                 return;
             }
-            else if (arg.Args.Length == 1 && arg.IsRcon)
+
+            var player = BasePlayer.Find(args[0]);
+            if (player == null)
             {
-                SpawnMinicopter(arg.Args[0]);
+                PrintError($"No player found matching '{args[0]}'");
+                return;
+            }
+
+            if (args.Length > 1)
+            {
+                float x, y, z;
+                if (args.Length < 4 ||
+                    !float.TryParse(args[1], out x) ||
+                    !float.TryParse(args[2], out y) ||
+                    !float.TryParse(args[3], out z))
+                {
+                    Puts($"Syntax: spawnmini.give <name or steamid> <x> <y> <z>");
+                    return;
+                }
+
+                GiveMinicopter(player, new Vector3(x, y, z), useCustomPosition: true);
+            }
+            else
+            {
+                GiveMinicopter(player);
             }
         }
 
         #endregion
 
         #region Helpers/Functions
+
+        private bool SpawnWasBlocked(BasePlayer player)
+        {
+            object hookResult = Interface.CallHook("OnMyMiniSpawn", player);
+            return hookResult is bool && (bool)hookResult == false;
+        }
+
+        private bool FetchWasBlocked(BasePlayer player, MiniCopter mini)
+        {
+            object hookResult = Interface.CallHook("OnMyMiniFetch", player, mini);
+            return hookResult is bool && (bool)hookResult == false;
+        }
+
+        private bool DespawnWasBlocked(BasePlayer player, MiniCopter mini)
+        {
+            object hookResult = Interface.CallHook("OnMyMiniDespawn", player, mini);
+            return hookResult is bool && (bool)hookResult == false;
+        }
 
         private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
             new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
@@ -323,6 +353,24 @@ namespace Oxide.Plugins
 
         private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
             Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
+
+        private MiniCopter FindPlayerMini(BasePlayer player)
+        {
+            uint miniNetId;
+            if (!_data.playerMini.TryGetValue(player.UserIDString, out miniNetId))
+                return null;
+
+            var mini = BaseNetworkable.serverEntities.Find(miniNetId) as MiniCopter;
+
+            // Fix a potential data file desync where the mini doesn't exist anymore
+            // Desyncs should be rare but are not possible to 100% prevent
+            // They can happen if the mini is destroyed while the plugin is unloaded
+            // Or if someone edits the data file manually
+            if (mini == null)
+                _data.playerMini.Remove(player.UserIDString);
+
+            return mini;
+        }
 
         private void SpawnMinicopter(BasePlayer player)
         {
@@ -378,26 +426,22 @@ namespace Oxide.Plugins
             }
         }
 
-        private void SpawnMinicopter(string id)
+        private void GiveMinicopter(BasePlayer player, Vector3 customPosition = default(Vector3), bool useCustomPosition = false)
         {
-            // Use find incase they put their username
-            BasePlayer player = BasePlayer.Find(id);
-
-            if (player == null)
-                return;
-
-            if (_data.playerMini.ContainsKey(player.UserIDString))
+            if (FindPlayerMini(player) != null)
             {
                 player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
                 return;
             }
 
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player)) as MiniCopter;
+            var position = useCustomPosition ? customPosition : GetIdealFixedPositionForPlayer(player);
+            var rotation = useCustomPosition ? Quaternion.identity : GetIdealRotationForPlayer(player);
+
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, rotation) as MiniCopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
             mini.Spawn();
-            // End
 
             _data.playerMini.Add(player.UserIDString, mini.net.ID);
 
@@ -479,13 +523,13 @@ namespace Oxide.Plugins
             public int fuelAmount = 0;
 
             [JsonProperty("MaxNoMiniDistance")]
-            public float noMiniDistance = 300f;
+            public float noMiniDistance = -1;
 
             [JsonProperty("MaxSpawnDistance")]
             public float maxSpawnDistance = 5f;
 
             [JsonProperty("UseFixedSpawnDistance")]
-            public bool useFixedSpawnDistance = false;
+            public bool useFixedSpawnDistance = true;
 
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly = false;

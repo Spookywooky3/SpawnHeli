@@ -15,12 +15,13 @@
 
 ## Server Commands
 
-* `spawnmini.give <steamid or name>` -- Spawn a minicopter for a specific player
+* `spawnmini.give <name or steamid>` -- Spawn a minicopter for a specific player using their name or steamid64
+* `spawnmini.give <name or steamid> <x> <y> <z>` -- Spawn a minicopter for a specific player at the designated coordinates
 
 ## For Developers
 
 ```csharp
-void SpawnMinicopter(BasePlayer/string);
+void SpawnMinicopter(BasePlayer);
 float GetDistance(BasePlayer, MiniCopter);
 bool IsPlayerOwned(MiniCopter);
 ```
@@ -35,9 +36,9 @@ Default configuration:
   "CanFetchWhileOccupied": false,
   "CanSpawnBuildingBlocked": false,
   "FuelAmount": 0,
-  "MaxNoMiniDistance": 300.0,
+  "MaxNoMiniDistance": -1.0,
   "MaxSpawnDistance": 5.0,
-  "UseFixedSpawnDistance": false,
+  "UseFixedSpawnDistance": true,
   "OwnerAndTeamCanMount": false,
   "DefaultCooldown": 86400.0,
   "PermissionCooldowns": {
@@ -76,6 +77,29 @@ Spawn Mini supports English, Russian, and German; and you can also add more lang
 * `/findmini` command that displays the bearing and distance of the minicopter
 
 If you have any ideas/suggestions I would love to hear them. If you have any issues use the Plugin Support section.
+
+## Developer Hooks
+
+```csharp
+object OnMyMiniSpawn(BasePlayer player)
+```
+- Called when a player uses `/mymini`
+- Returning `false` will prevent spawning the minicopter
+- Returning `null` will result in the default behavior
+
+```csharp
+object OnMyMiniFetch(BasePlayer player, MiniCopter mini)
+```
+- Called when a player uses `/fmini`
+- Returning `false` will prevent fetching the minicopter
+- Returning `null` will result in the default behavior
+
+```csharp
+object OnMyMiniDespawn(BasePlayer player, MiniCopter mini)
+```
+- Called when a player uses `/nomini`
+- Returning `false` will prevent despawning the minicopter
+- Returning `null` will result in the default behavior
 
 ## Credits
 
