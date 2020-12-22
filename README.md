@@ -104,6 +104,7 @@ object OnMyMiniDespawn(BasePlayer player, MiniCopter mini)
 ## Credits
 
 * **SpooksAU**, the current maintainer
+* **WhiteThunder**, put in heaps of work while i was unable to
 * **BuzZ**, the original author of MyMiniCopter
 * **rfc1920**, for helping maintain the plugin
 * **Texas/Alice**, for the German translations
