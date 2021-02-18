@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Oxide.Core;
+using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,7 +41,7 @@ namespace Oxide.Plugins
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile(Name))
                 Interface.Oxide.DataFileSystem.GetDatafile(Name).Save();
 
-            _data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>(Name);
+            LoadSaveData();
 
             if (!_config.ownerOnly)
                 Unsubscribe(nameof(CanMountEntity));
@@ -495,6 +496,18 @@ namespace Oxide.Plugins
         #endregion
 
         #region Data & Configuration
+
+        private SaveData LoadSaveData()
+        {
+            _data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>(Name);
+            if (_data == null)
+            {
+                PrintWarning($"Data file {Name}.json is invalid. Creating new data file.");
+                _data = new SaveData();
+                WriteSaveData();
+            }
+            return _data;
+        }
 
         private void WriteSaveData() =>
             Interface.Oxide.DataFileSystem.WriteObject(Name, _data);
