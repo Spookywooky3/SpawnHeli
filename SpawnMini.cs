@@ -163,6 +163,19 @@ namespace Oxide.Plugins
                 mini.Kill();
         }
 
+        void CanLootEntity(BasePlayer player, StorageContainer container)
+        {
+            if (container == null || !container.IsLocked())
+                return;
+
+            var mini = container.GetParentEntity() as MiniCopter;
+            if (mini == null || !IsPlayerOwned(mini))
+                return;
+
+            if (permission.UserHasPermission(mini.OwnerID.ToString(), _noFuel))
+                player.ChatMessage(lang.GetMessage("mini_unlimited_fuel", this, player.UserIDString));
+        }
+
         #endregion
 
         #region Commands
@@ -585,7 +598,8 @@ namespace Oxide.Plugins
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
                 ["mini_mounted"] = "A player is currenty mounted on the minicopter!",
                 ["mini_current_distance"] = "The minicopter is too far!",
-                ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!"
+                ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!",
+                ["mini_unlimited_fuel"] = "That minicopter doesn't need fuel!",
             }, this, "en");
             lang.RegisterMessages(new Dictionary<string, string>
             {
