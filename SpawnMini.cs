@@ -585,7 +585,6 @@ namespace Oxide.Plugins
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
                 ["mini_mounted"] = "A player is currenty mounted on the minicopter!",
                 ["mini_current_distance"] = "The minicopter is too far!",
-                ["mini_rcon"] = "This command can only be run from RCON!",
                 ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!"
             }, this, "en");
             lang.RegisterMessages(new Dictionary<string, string>
@@ -600,7 +599,6 @@ namespace Oxide.Plugins
                 ["mini_terrain"] = "Попытка породить мини-вертолет вне местности!",
                 ["mini_mounted"] = "Игрок в данный момент сидит на миникоптере или это слишком далеко!",
                 ["mini_current_distance"] = "Мини-вертолет слишком далеко!",
-                ["mini_rcon"] = "Эту команду можно запустить только из RCON!",
                 ["mini_canmount"] = "Вы не являетесь владельцем этого Minicopter или в команде владельца!"
             }, this, "ru");
             lang.RegisterMessages(new Dictionary<string, string>
