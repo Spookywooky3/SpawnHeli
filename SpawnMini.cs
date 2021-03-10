@@ -199,6 +199,12 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (IsLocationRestricted(player.transform.position))
+            {
+                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
+                return;
+            }
+
             if (SpawnWasBlocked(player))
                 return;
 
@@ -244,6 +250,12 @@ namespace Oxide.Plugins
             if (IsMiniBeyondMaxDistance(player, mini))
             {
                 player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                return;
+            }
+
+            if (IsLocationRestricted(player.transform.position))
+            {
+                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
                 return;
             }
 
@@ -358,6 +370,12 @@ namespace Oxide.Plugins
 
         private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
             new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
+
+        private bool IsLocationRestricted(Vector3 position)
+        {
+            // Disallow spawning in underground train tunnels
+            return position.y < -100;
+        }
 
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
@@ -630,6 +648,7 @@ namespace Oxide.Plugins
                 ["mini_current_distance"] = "The minicopter is too far!",
                 ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!",
                 ["mini_unlimited_fuel"] = "That minicopter doesn't need fuel!",
+                ["mini_location_restricted"] = "You cannot do that here!",
             }, this, "en");
             lang.RegisterMessages(new Dictionary<string, string>
             {
