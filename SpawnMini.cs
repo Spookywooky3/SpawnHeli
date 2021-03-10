@@ -23,6 +23,7 @@ namespace Oxide.Plugins
         private readonly string _fetchMini = "spawnmini.fmini";
         private readonly string _noFuel = "spawnmini.unlimitedfuel";
         private readonly string _noDecay = "spawnmini.nodecay";
+        private readonly string _permissionFuelFormat = "spawnmini.fuel.{0}";
 
         #region Hooks
 
@@ -37,6 +38,9 @@ namespace Oxide.Plugins
 
             foreach (var perm in _config.cooldowns)
                 permission.RegisterPermission(perm.Key, this);
+
+            foreach (var fuelAmount in _config.fuelAmountsRequiringPermission)
+                permission.RegisterPermission(GetFuelPermission(fuelAmount), this);
 
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile(Name))
                 Interface.Oxide.DataFileSystem.GetDatafile(Name).Save();
@@ -430,7 +434,7 @@ namespace Oxide.Plugins
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
                 EnableUnlimitedFuel(mini);
             else
-                AddInitialFuel(mini);
+                AddInitialFuel(mini, player.UserIDString);
 
             _data.playerMini.Add(player.UserIDString, mini.net.ID);
 
@@ -462,7 +466,7 @@ namespace Oxide.Plugins
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
                 EnableUnlimitedFuel(mini);
             else
-                AddInitialFuel(mini);
+                AddInitialFuel(mini, player.UserIDString);
         }
 
         private float GetPlayerCooldownSeconds(BasePlayer player)
@@ -474,12 +478,18 @@ namespace Oxide.Plugins
             return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : _config.defaultCooldown;
         }
 
-        private void AddInitialFuel(MiniCopter minicopter)
+        private void AddInitialFuel(MiniCopter minicopter, string userId)
         {
-            if (_config.fuelAmount == 0) return;
+            var fuelAmount = GetPlayerAllowedFuel(userId);
+            if (fuelAmount == 0)
+                return;
 
             StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-            int fuelAmount = _config.fuelAmount < 0 ? fuelContainer.allowedItem.stackable : _config.fuelAmount;
+            if (fuelAmount < 0)
+            {
+                // Value of -1 is documented to represent max stack size
+                fuelAmount = fuelContainer.allowedItem.stackable;
+            }
             fuelContainer.inventory.AddItem(fuelContainer.allowedItem, fuelAmount);
         }
 
@@ -506,9 +516,26 @@ namespace Oxide.Plugins
             return false;
         }
 
+        private string GetFuelPermission(int fuelAmount) => String.Format(_permissionFuelFormat, fuelAmount);
+
         #endregion
 
         #region Data & Configuration
+
+        private int GetPlayerAllowedFuel(string userIdString)
+        {
+            if (_config.fuelAmountsRequiringPermission == null || _config.fuelAmountsRequiringPermission.Length == 0)
+                return _config.fuelAmount;
+
+            for (var i = _config.fuelAmountsRequiringPermission.Length - 1; i >= 0; i--)
+            {
+                var fuelAmount = _config.fuelAmountsRequiringPermission[i];
+                if (permission.UserHasPermission(userIdString, String.Format(_permissionFuelFormat, fuelAmount)))
+                    return fuelAmount;
+            }
+
+            return _config.fuelAmount;
+        }
 
         private SaveData LoadSaveData()
         {
@@ -547,6 +574,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;
+
+            [JsonProperty("FuelAmountsRequiringPermission")]
+            public int[] fuelAmountsRequiringPermission = new int[0];
 
             [JsonProperty("MaxNoMiniDistance")]
             public float noMiniDistance = -1;
