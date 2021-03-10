@@ -74,7 +74,7 @@ Options explained:
 
 ## Localization
 
-Spawn Mini supports English, Russian, and German; and you can also add more languages.
+Spawn Mini comes bundled with partial translations for Russian and German which were contributed by the community. Please open a thread in the help section if you would like to contribute translations.
 
 ## Future Plans
 
