@@ -240,6 +240,12 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
+            {
+                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
+                return;
+            }
+
             bool isMounted = mini.AnyMounted();
             if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
             {
@@ -410,9 +416,9 @@ namespace Oxide.Plugins
 
         private void SpawnMinicopter(BasePlayer player)
         {
-            if (player.IsBuildingBlocked() && !_config.canSpawnBuildingBlocked)
+            if (!_config.canSpawnBuildingBlocked && player.IsBuildingBlocked())
             {
-                player.ChatMessage(lang.GetMessage("mini_priv", this, player.UserIDString));
+                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
                 return;
             }
 
@@ -590,6 +596,9 @@ namespace Oxide.Plugins
             [JsonProperty("CanSpawnBuildingBlocked")]
             public bool canSpawnBuildingBlocked = false;
 
+            [JsonProperty("CanFetchBuildingBlocked")]
+            public bool canFetchBuildlingBlocked = true;
+
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;
 
@@ -640,7 +649,7 @@ namespace Oxide.Plugins
                 ["mini_perm"] = "You do not have permission to use this command!",
                 ["mini_current"] = "You already have a minicopter!",
                 ["mini_notcurrent"] = "You do not have a minicopter!",
-                ["mini_priv"] = "Cannot spawn a minicopter because you're building blocked!",
+                ["mini_buildingblocked"] = "Cannot do that while building blocked!",
                 ["mini_timeleft_new"] = "You have <color=red>{0}</color> until your cooldown ends",
                 ["mini_sdistance"] = "You're trying to spawn the minicopter too far away!",
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
@@ -656,7 +665,6 @@ namespace Oxide.Plugins
                 ["mini_perm"] = "У вас нет разрешения на использование этой команды!",
                 ["mini_current"] = "У вас уже есть мини-вертолет!",
                 ["mini_notcurrent"] = "У вас нет мини-вертолета!",
-                ["mini_priv"] = "Невозможно вызвать мини-вертолет, потому что ваше здание заблокировано!",
                 ["mini_timeleft_new"] = "У вас есть <color=red>{0}</color>, пока ваше время восстановления не закончится.",
                 ["mini_sdistance"] = "Вы пытаетесь породить миникоптер слишком далеко!",
                 ["mini_terrain"] = "Попытка породить мини-вертолет вне местности!",
@@ -670,7 +678,6 @@ namespace Oxide.Plugins
                 ["mini_perm"] = "Du habe keine keine berechtigung diesen befehl zu verwenden!",
                 ["mini_current"] = "Du hast bereits einen minikopter!",
                 ["mini_notcurrent"] = "Du hast keine minikopter!",
-                ["mini_priv"] = "Ein minikopter kann nicht hervorgebracht, da das bauwerk ist verstopft!",
                 ["mini_timeleft_new"] = "Du hast <color=red>{0}</color>, bis ihre abklingzeit ende",
                 ["mini_sdistance"] = "Du bist versuchen den minikopter zu weit weg zu spawnen!",
                 ["mini_terrain"] = "Du versucht laichen einen minikopter außerhalb des geländes!",
