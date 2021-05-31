@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Oxide.Core;
+using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.10.0"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.11.0"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -22,6 +23,7 @@ namespace Oxide.Plugins
         private readonly string _fetchMini = "spawnmini.fmini";
         private readonly string _noFuel = "spawnmini.unlimitedfuel";
         private readonly string _noDecay = "spawnmini.nodecay";
+        private readonly string _permissionFuelFormat = "spawnmini.fuel.{0}";
 
         #region Hooks
 
@@ -37,10 +39,13 @@ namespace Oxide.Plugins
             foreach (var perm in _config.cooldowns)
                 permission.RegisterPermission(perm.Key, this);
 
+            foreach (var fuelAmount in _config.fuelAmountsRequiringPermission)
+                permission.RegisterPermission(GetFuelPermission(fuelAmount), this);
+
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile(Name))
                 Interface.Oxide.DataFileSystem.GetDatafile(Name).Save();
 
-            _data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>(Name);
+            LoadSaveData();
 
             if (!_config.ownerOnly)
                 Unsubscribe(nameof(CanMountEntity));
@@ -162,6 +167,19 @@ namespace Oxide.Plugins
                 mini.Kill();
         }
 
+        void CanLootEntity(BasePlayer player, StorageContainer container)
+        {
+            if (container == null || !container.IsLocked())
+                return;
+
+            var mini = container.GetParentEntity() as MiniCopter;
+            if (mini == null || !IsPlayerOwned(mini))
+                return;
+
+            if (permission.UserHasPermission(mini.OwnerID.ToString(), _noFuel))
+                player.ChatMessage(lang.GetMessage("mini_unlimited_fuel", this, player.UserIDString));
+        }
+
         #endregion
 
         #region Commands
@@ -178,6 +196,12 @@ namespace Oxide.Plugins
             if (FindPlayerMini(player) != null)
             {
                 player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                return;
+            }
+
+            if (IsLocationRestricted(player.transform.position))
+            {
+                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
                 return;
             }
 
@@ -216,6 +240,12 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
+            {
+                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
+                return;
+            }
+
             bool isMounted = mini.AnyMounted();
             if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
             {
@@ -226,6 +256,12 @@ namespace Oxide.Plugins
             if (IsMiniBeyondMaxDistance(player, mini))
             {
                 player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                return;
+            }
+
+            if (IsLocationRestricted(player.transform.position))
+            {
+                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
                 return;
             }
 
@@ -341,6 +377,12 @@ namespace Oxide.Plugins
         private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
             new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
 
+        private bool IsLocationRestricted(Vector3 position)
+        {
+            // Disallow spawning in underground train tunnels
+            return position.y < -100;
+        }
+
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
 
@@ -374,9 +416,9 @@ namespace Oxide.Plugins
 
         private void SpawnMinicopter(BasePlayer player)
         {
-            if (player.IsBuildingBlocked() && !_config.canSpawnBuildingBlocked)
+            if (!_config.canSpawnBuildingBlocked && player.IsBuildingBlocked())
             {
-                player.ChatMessage(lang.GetMessage("mini_priv", this, player.UserIDString));
+                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
                 return;
             }
 
@@ -416,7 +458,7 @@ namespace Oxide.Plugins
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
                 EnableUnlimitedFuel(mini);
             else
-                AddInitialFuel(mini);
+                AddInitialFuel(mini, player.UserIDString);
 
             _data.playerMini.Add(player.UserIDString, mini.net.ID);
 
@@ -448,7 +490,7 @@ namespace Oxide.Plugins
             if (permission.UserHasPermission(player.UserIDString, _noFuel))
                 EnableUnlimitedFuel(mini);
             else
-                AddInitialFuel(mini);
+                AddInitialFuel(mini, player.UserIDString);
         }
 
         private float GetPlayerCooldownSeconds(BasePlayer player)
@@ -460,12 +502,18 @@ namespace Oxide.Plugins
             return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : _config.defaultCooldown;
         }
 
-        private void AddInitialFuel(MiniCopter minicopter)
+        private void AddInitialFuel(MiniCopter minicopter, string userId)
         {
-            if (_config.fuelAmount == 0) return;
+            var fuelAmount = GetPlayerAllowedFuel(userId);
+            if (fuelAmount == 0)
+                return;
 
             StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-            int fuelAmount = _config.fuelAmount < 0 ? fuelContainer.allowedItem.stackable : _config.fuelAmount;
+            if (fuelAmount < 0)
+            {
+                // Value of -1 is documented to represent max stack size
+                fuelAmount = fuelContainer.allowedItem.stackable;
+            }
             fuelContainer.inventory.AddItem(fuelContainer.allowedItem, fuelAmount);
         }
 
@@ -492,9 +540,38 @@ namespace Oxide.Plugins
             return false;
         }
 
+        private string GetFuelPermission(int fuelAmount) => String.Format(_permissionFuelFormat, fuelAmount);
+
         #endregion
 
         #region Data & Configuration
+
+        private int GetPlayerAllowedFuel(string userIdString)
+        {
+            if (_config.fuelAmountsRequiringPermission == null || _config.fuelAmountsRequiringPermission.Length == 0)
+                return _config.fuelAmount;
+
+            for (var i = _config.fuelAmountsRequiringPermission.Length - 1; i >= 0; i--)
+            {
+                var fuelAmount = _config.fuelAmountsRequiringPermission[i];
+                if (permission.UserHasPermission(userIdString, String.Format(_permissionFuelFormat, fuelAmount)))
+                    return fuelAmount;
+            }
+
+            return _config.fuelAmount;
+        }
+
+        private SaveData LoadSaveData()
+        {
+            _data = Interface.Oxide.DataFileSystem.ReadObject<SaveData>(Name);
+            if (_data == null)
+            {
+                PrintWarning($"Data file {Name}.json is invalid. Creating new data file.");
+                _data = new SaveData();
+                WriteSaveData();
+            }
+            return _data;
+        }
 
         private void WriteSaveData() =>
             Interface.Oxide.DataFileSystem.WriteObject(Name, _data);
@@ -519,8 +596,14 @@ namespace Oxide.Plugins
             [JsonProperty("CanSpawnBuildingBlocked")]
             public bool canSpawnBuildingBlocked = false;
 
+            [JsonProperty("CanFetchBuildingBlocked")]
+            public bool canFetchBuildlingBlocked = true;
+
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;
+
+            [JsonProperty("FuelAmountsRequiringPermission")]
+            public int[] fuelAmountsRequiringPermission = new int[0];
 
             [JsonProperty("MaxNoMiniDistance")]
             public float noMiniDistance = -1;
@@ -566,14 +649,15 @@ namespace Oxide.Plugins
                 ["mini_perm"] = "You do not have permission to use this command!",
                 ["mini_current"] = "You already have a minicopter!",
                 ["mini_notcurrent"] = "You do not have a minicopter!",
-                ["mini_priv"] = "Cannot spawn a minicopter because you're building blocked!",
+                ["mini_buildingblocked"] = "Cannot do that while building blocked!",
                 ["mini_timeleft_new"] = "You have <color=red>{0}</color> until your cooldown ends",
                 ["mini_sdistance"] = "You're trying to spawn the minicopter too far away!",
                 ["mini_terrain"] = "Trying to spawn minicopter outside of terrain!",
                 ["mini_mounted"] = "A player is currenty mounted on the minicopter!",
                 ["mini_current_distance"] = "The minicopter is too far!",
-                ["mini_rcon"] = "This command can only be run from RCON!",
-                ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!"
+                ["mini_canmount"] = "You are not the owner of this Minicopter or in the owner's team!",
+                ["mini_unlimited_fuel"] = "That minicopter doesn't need fuel!",
+                ["mini_location_restricted"] = "You cannot do that here!",
             }, this, "en");
             lang.RegisterMessages(new Dictionary<string, string>
             {
@@ -581,13 +665,11 @@ namespace Oxide.Plugins
                 ["mini_perm"] = "У вас нет разрешения на использование этой команды!",
                 ["mini_current"] = "У вас уже есть мини-вертолет!",
                 ["mini_notcurrent"] = "У вас нет мини-вертолета!",
-                ["mini_priv"] = "Невозможно вызвать мини-вертолет, потому что ваше здание заблокировано!",
                 ["mini_timeleft_new"] = "У вас есть <color=red>{0}</color>, пока ваше время восстановления не закончится.",
                 ["mini_sdistance"] = "Вы пытаетесь породить миникоптер слишком далеко!",
                 ["mini_terrain"] = "Попытка породить мини-вертолет вне местности!",
                 ["mini_mounted"] = "Игрок в данный момент сидит на миникоптере или это слишком далеко!",
                 ["mini_current_distance"] = "Мини-вертолет слишком далеко!",
-                ["mini_rcon"] = "Эту команду можно запустить только из RCON!",
                 ["mini_canmount"] = "Вы не являетесь владельцем этого Minicopter или в команде владельца!"
             }, this, "ru");
             lang.RegisterMessages(new Dictionary<string, string>
@@ -596,7 +678,6 @@ namespace Oxide.Plugins
                 ["mini_perm"] = "Du habe keine keine berechtigung diesen befehl zu verwenden!",
                 ["mini_current"] = "Du hast bereits einen minikopter!",
                 ["mini_notcurrent"] = "Du hast keine minikopter!",
-                ["mini_priv"] = "Ein minikopter kann nicht hervorgebracht, da das bauwerk ist verstopft!",
                 ["mini_timeleft_new"] = "Du hast <color=red>{0}</color>, bis ihre abklingzeit ende",
                 ["mini_sdistance"] = "Du bist versuchen den minikopter zu weit weg zu spawnen!",
                 ["mini_terrain"] = "Du versucht laichen einen minikopter außerhalb des geländes!",
