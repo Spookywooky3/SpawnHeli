@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.11.0"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.11.1"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -113,7 +113,7 @@ namespace Oxide.Plugins
             if (player == null || entity == null)
                 return null;
 
-            var mini = entity.GetVehicleParent() as MiniCopter;
+            var mini = entity.GetParentEntity() as MiniCopter;
             if (mini == null || mini is ScrapTransportHelicopter || mini.OwnerID == 0 || !IsPlayerOwned(mini)) return null;
 
             if (mini.OwnerID != player.userID)
@@ -157,7 +157,7 @@ namespace Oxide.Plugins
             if (seat == null)
                 return;
 
-            var mini = seat.GetVehicleParent() as MiniCopter;
+            var mini = seat.GetParentEntity() as MiniCopter;
             if (mini == null || mini.OwnerID == 0 || !IsPlayerOwned(mini) || mini.AnyMounted())
                 return;
 
