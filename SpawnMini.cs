@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.11.1"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.11.2"), Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -519,11 +519,10 @@ namespace Oxide.Plugins
 
         private void EnableUnlimitedFuel(MiniCopter minicopter)
         {
-            minicopter.fuelPerSec = 0f;
-
-            StorageContainer fuelContainer = minicopter.GetFuelSystem().GetFuelContainer();
-            fuelContainer.inventory.AddItem(fuelContainer.allowedItem, 1);
-            fuelContainer.SetFlag(BaseEntity.Flags.Locked, true);
+            var fuelSystem = minicopter.GetFuelSystem();
+            fuelSystem.cachedHasFuel = true;
+            fuelSystem.nextFuelCheckTime = float.MaxValue;
+            fuelSystem.GetFuelContainer().SetFlag(BaseEntity.Flags.Locked, true);
         }
 
         private float GetDistance(BasePlayer player, MiniCopter mini)
