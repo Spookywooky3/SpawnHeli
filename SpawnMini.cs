@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.11.2")]
+    [Info("Spawn Mini", "SpooksAU", "2.12.0")]
     [Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
@@ -268,7 +268,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (mini.AnyMounted() && (!_config.canDespawnWhileOccupied || player.GetMountedVehicle() == mini))
+            if (mini.AnyMounted() && !_config.canDespawnWhileOccupied)
             {
                 player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
                 return;

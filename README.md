@@ -66,7 +66,7 @@ Default configuration:
 ```
 
 Options explained:
-* `CanDespawnWhileOccupied` (`true` or `false`) -- Whether to allow players to use `/nomini` while their minicopter is mounted. Regardless of this setting, players cannot despawn their minicopter while they are mounted on it.
+* `CanDespawnWhileOccupied` (`true` or `false`) -- Whether to allow players to use `/nomini` while their minicopter is mounted.
 * `CanFetchWhileOccupied` (`true` or `false`) -- Whether to allow players to use `/fmini` while the minicopter is mounted. Mounted players will be dismounted automatically. Regardless of this setting, players cannot fetched their minicopter while they are mounted on it.
 * `CanSpawnBuildingBlocked` (`true` or `false`) -- Whether to allow players to spawn a minicopter while building blocked.
 * `CanFetchBuildingBlocked` (`true` or `false`) -- Whether to allow players to use `/fmini` while building blocked.
