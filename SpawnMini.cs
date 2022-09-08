@@ -276,6 +276,8 @@ namespace Oxide.Plugins
             }
 
             mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
+            mini.UpdateNetworkGroup();
+            mini.SendNetworkUpdateImmediate();
         }
 
         [ChatCommand("nomini")]
