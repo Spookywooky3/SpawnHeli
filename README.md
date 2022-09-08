@@ -44,6 +44,8 @@ Default configuration:
   "MaxNoMiniDistance": -1.0,
   "MaxSpawnDistance": 5.0,
   "UseFixedSpawnDistance": true,
+  "FixedSpawnDistance": 3.0,
+  "FixedSpawnRotationAngle": 135.0,
   "OwnerAndTeamCanMount": false,
   "DefaultCooldown": 86400.0,
   "PermissionCooldowns": {
@@ -67,6 +69,8 @@ Options explained:
 * `MaxNoMiniDistance` -- The maximum distance players can be from their minicopter to use `/nomini` or `/fmini`. Set to `-1` to allow those commands at unlimited distance.
 * `MaxSpawnDistance` -- The maximum distance away that players are allowed to spawn their minicopter.
 * `UseFixedSpawnDistance` (`true` or `false`) -- Set to `true` to cause minicopters to spawn directly in front of players at a fixed distance, disregarding the `MaxSpawnDistance` setting. Performs no terrain checks.
+* `FixedSpawnDistance` -- Distance from the player to spawn or fetch the mini, while `UseFixedSpawnDistance` is `true`.
+* `FixedSpawnRotationAngle` -- Angle to rotate the mini relative to the player when spawning or fetching, while `UseFixedSpawnDistance` is `true`.
 * `OwnerAndTeamCanMount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the minicopter.
 * `DefaultCooldown` -- The default spawn cooldown that will apply to players who have not been granted any permissions in `PermissionCooldowns`.
 * `PermissionCooldowns` -- Use these settings to customize cooldowns for different player groups. For example, set `"spawnmini.tier1": 3600.0` and then grant the `spawnmini.tier1` permission to a group of players to assign them a 1 hour cooldown for spawning their minicopters.

@@ -196,7 +196,7 @@ namespace Oxide.Plugins
             var mini = FindPlayerMini(player);
             if (mini != null)
             {
-                if (_config.AutoFetch && permission.UserHasPermission(player.UserIDString, _fetchMini))
+                if (_config.autoFetch && permission.UserHasPermission(player.UserIDString, _fetchMini))
                 {
                     FetchInternal(player, mini);
                 }
@@ -360,15 +360,15 @@ namespace Oxide.Plugins
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
 
-        private Vector3 GetIdealFixedPositionForPlayer(BasePlayer player)
+        private Vector3 GetFixedPositionForPlayer(BasePlayer player)
         {
             Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
             forward.y = 0;
-            return player.transform.position + forward.normalized * 3f + Vector3.up * 2f;
+            return player.transform.position + forward.normalized * _config.fixedSpawnDistance + Vector3.up * 2f;
         }
 
-        private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
-            Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
+        private Quaternion GetFixedRotationForPlayer(BasePlayer player) =>
+            Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - _config.fixedSpawnRotationAngle, 0);
 
         private MiniCopter FindPlayerMini(BasePlayer player)
         {
@@ -426,7 +426,7 @@ namespace Oxide.Plugins
             }
 
             mini.rigidBody.velocity = Vector3.zero;
-            mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
+            mini.transform.SetPositionAndRotation(GetFixedPositionForPlayer(player), GetFixedRotationForPlayer(player));
             mini.UpdateNetworkGroup();
             mini.SendNetworkUpdateImmediate();
         }
@@ -443,7 +443,7 @@ namespace Oxide.Plugins
 
             if (_config.useFixedSpawnDistance)
             {
-                position = GetIdealFixedPositionForPlayer(player);
+                position = GetFixedPositionForPlayer(player);
             }
             else
             {
@@ -464,7 +464,7 @@ namespace Oxide.Plugins
                 position = hit.point + Vector3.up * 2f;
             }
 
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetFixedRotationForPlayer(player)) as MiniCopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
@@ -493,8 +493,8 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var position = useCustomPosition ? customPosition : GetIdealFixedPositionForPlayer(player);
-            var rotation = useCustomPosition ? Quaternion.identity : GetIdealRotationForPlayer(player);
+            var position = useCustomPosition ? customPosition : GetFixedPositionForPlayer(player);
+            var rotation = useCustomPosition ? Quaternion.identity : GetFixedRotationForPlayer(player);
 
             MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, rotation) as MiniCopter;
             if (mini == null) return;
@@ -616,7 +616,7 @@ namespace Oxide.Plugins
             public bool canFetchBuildlingBlocked = true;
 
             [JsonProperty("AutoFetch")]
-            public bool AutoFetch = false;
+            public bool autoFetch = false;
 
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;
@@ -632,6 +632,12 @@ namespace Oxide.Plugins
 
             [JsonProperty("UseFixedSpawnDistance")]
             public bool useFixedSpawnDistance = true;
+
+            [JsonProperty("FixedSpawnDistance")]
+            public float fixedSpawnDistance = 3;
+
+            [JsonProperty("FixedSpawnRotationAngle")]
+            public float fixedSpawnRotationAngle = 135;
 
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly = false;
