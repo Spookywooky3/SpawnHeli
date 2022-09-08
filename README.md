@@ -5,13 +5,13 @@
 * `spawnmini.nomini` -- Allows player to use `/nomini` chat command
 * `spawnmini.nodecay` -- Doesn't allow the player's minicopter to decay
 * `spawnmini.unlimitedfuel` -- Gives the player unlimited fuel when they spawn their minicopter
-* `spawnmini.fmini` -- Allows player to use `/fmini` chat command
+* `spawnmini.fmini` -- Allows player to use `/fmini` chat command, and allows `/mymini` to fetch the existing mini while the `AutoFetch` config option is enabled
 * `spawnmini.fuel.<amount>` -- Determines the amount of fuel the player's minicopter spawns with, overriding the `FuelAmount` config value
   * To use this, you must first add the desired amount in the `FuelAmountsRequiringPermission` config option
 
 ## Chat Commands
 
-* `/mymini` -- Spawn a minicopter
+* `/mymini` -- Spawn or fetch your minicopter
 * `/nomini` -- Despawn your minicopter
 * `/fmini` -- Fetch your minicopter
 
@@ -38,6 +38,7 @@ Default configuration:
   "CanFetchWhileOccupied": false,
   "CanSpawnBuildingBlocked": false,
   "CanFetchBuildingBlocked": true,
+  "AutoFetch": false,
   "FuelAmount": 0,
   "FuelAmountsRequiringPermission": [],
   "MaxNoMiniDistance": -1.0,
@@ -60,6 +61,7 @@ Options explained:
 * `CanFetchWhileOccupied` (`true` or `false`) -- Whether to allow players to use `/fmini` while the minicopter is mounted. Mounted players will be dismounted automatically. Regardless of this setting, players cannot fetched their minicopter while they are mounted on it.
 * `CanSpawnBuildingBlocked` (`true` or `false`) -- Whether to allow players to spawn a minicopter while building blocked.
 * `CanFetchBuildingBlocked` (`true` or `false`) -- Whether to allow players to use `/fmini` while building blocked.
+* `AutoFetch` (`true` or `false`) -- Whether to automatically fetch your existing mini when using the `/mymini` command, if you have the `spawnmini.fmini` permission.
 * `FuelAmount` -- Amount of low grade fuel to add to minicopters when spawned. Set to `-1` for max stack size (which depends on the server, but is 500 in vanilla). Does not apply to minicopters spawned for players who have the `spawnmini.unlimitedfuel` permission.
 * `FuelAmountsRequiringPermission` -- Use this to customize the fuel amount for different player groups. Simply add the desire fuel amounts like `[100, 200]`, and reload the plugin to generate permissions of the format `spawnmini.fuel.<amount>`. Granting one to a player will cause their mini to spawn with that amount of low grade fuel, overriding the default `FuelAmount`. If you grant multiple of these permission to a player, the last will apply, based on the order in the config.
 * `MaxNoMiniDistance` -- The maximum distance players can be from their minicopter to use `/nomini` or `/fmini`. Set to `-1` to allow those commands at unlimited distance.

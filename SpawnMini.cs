@@ -185,7 +185,7 @@ namespace Oxide.Plugins
         #region Commands
 
         [ChatCommand("mymini")]
-        private void MyMiniCommand(BasePlayer player, string command, string[] args)
+        private void SpawnCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
@@ -193,9 +193,18 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (FindPlayerMini(player) != null)
+            var mini = FindPlayerMini(player);
+            if (mini != null)
             {
-                player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                if (_config.AutoFetch && permission.UserHasPermission(player.UserIDString, _fetchMini))
+                {
+                    FetchInternal(player, mini);
+                }
+                else
+                {
+                    player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                }
+
                 return;
             }
 
@@ -225,7 +234,7 @@ namespace Oxide.Plugins
         }
 
         [ChatCommand("fmini")]
-        private void FetchMinicopter(BasePlayer player, string command, string[] args)
+        private void FetchCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _fetchMini))
             {
@@ -240,48 +249,11 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
-            {
-                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
-                return;
-            }
-
-            bool isMounted = mini.AnyMounted();
-            if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
-            {
-                player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
-                return;
-            }
-
-            if (IsMiniBeyondMaxDistance(player, mini))
-            {
-                player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
-                return;
-            }
-
-            if (IsLocationRestricted(player.transform.position))
-            {
-                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
-                return;
-            }
-
-            if (FetchWasBlocked(player, mini))
-                return;
-
-            if (isMounted)
-            {
-                // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
-                foreach (var mountPoint in mini.mountPoints)
-                    mountPoint.mountable?.DismountAllPlayers();
-            }
-
-            mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
-            mini.UpdateNetworkGroup();
-            mini.SendNetworkUpdateImmediate();
+            FetchInternal(player, mini);
         }
 
         [ChatCommand("nomini")]
-        private void NoMinicopter(BasePlayer player, string command, string[] args)
+        private void DespawnCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _noMini))
             {
@@ -414,6 +386,49 @@ namespace Oxide.Plugins
                 _data.playerMini.Remove(player.UserIDString);
 
             return mini;
+        }
+
+        private void FetchInternal(BasePlayer player, MiniCopter mini)
+        {
+            if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
+            {
+                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
+                return;
+            }
+
+            bool isMounted = mini.AnyMounted();
+            if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
+                return;
+            }
+
+            if (IsMiniBeyondMaxDistance(player, mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                return;
+            }
+
+            if (IsLocationRestricted(player.transform.position))
+            {
+                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
+                return;
+            }
+
+            if (FetchWasBlocked(player, mini))
+                return;
+
+            if (isMounted)
+            {
+                // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
+                foreach (var mountPoint in mini.mountPoints)
+                    mountPoint.mountable?.DismountAllPlayers();
+            }
+
+            mini.rigidBody.velocity = Vector3.zero;
+            mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
+            mini.UpdateNetworkGroup();
+            mini.SendNetworkUpdateImmediate();
         }
 
         private void SpawnMinicopter(BasePlayer player)
@@ -599,6 +614,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("CanFetchBuildingBlocked")]
             public bool canFetchBuildlingBlocked = true;
+
+            [JsonProperty("AutoFetch")]
+            public bool AutoFetch = false;
 
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;
