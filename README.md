@@ -48,11 +48,17 @@ Default configuration:
   "FixedSpawnDistance": 3.0,
   "FixedSpawnRotationAngle": 135.0,
   "OwnerAndTeamCanMount": false,
-  "DefaultCooldown": 86400.0,
-  "PermissionCooldowns": {
+  "DefaultSpawnCooldown": 86400.0,
+  "PermissionSpawnCooldowns": {
     "spawnmini.tier1": 43200.0,
     "spawnmini.tier2": 21600.0,
     "spawnmini.tier3": 10800.0
+  },
+  "DefaultFetchCooldown": 0.0,
+  "PermissionFetchCooldowns": {
+    "spawnmini.fetch.tier1": 600.0,
+    "spawnmini.fetch.tier2": 300.0,
+    "spawnmini.fetch.tier3": 60.0
   },
   "SpawnHealth": 750.0,
   "DestroyOnDisconnect": false
@@ -74,10 +80,15 @@ Options explained:
 * `FixedSpawnDistance` -- Distance from the player to spawn or fetch the mini, while `UseFixedSpawnDistance` is `true`.
 * `FixedSpawnRotationAngle` -- Angle to rotate the mini relative to the player when spawning or fetching, while `UseFixedSpawnDistance` is `true`.
 * `OwnerAndTeamCanMount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the minicopter.
-* `DefaultCooldown` -- The default spawn cooldown that will apply to players who have not been granted any permissions in `PermissionCooldowns`.
-* `PermissionCooldowns` -- Use these settings to customize cooldowns for different player groups. For example, set `"spawnmini.tier1": 3600.0` and then grant the `spawnmini.tier1` permission to a group of players to assign them a 1 hour cooldown for spawning their minicopters.
+* `DefaultSpawnCooldown` -- The default spawn cooldown that will apply to players who have not been granted any permissions in `PermissionSpawnCooldowns`.
+* `PermissionSpawnCooldowns` -- Use these settings to customize spawn cooldowns for different player groups. For example, set `"spawnmini.tier1": 3600.0` and then grant the `spawnmini.tier1` permission to a group of players to assign them a 1 hour cooldown for spawning their minicopters.
   * If a player has multiple cooldown permissions, the lowest is used.
-  * If a player has no cooldown permissions, `DefaultCooldown` will be used for them.
+  * If a player has no cooldown permissions, `DefaultSpawnCooldown` will be used for them.
+  * You can add as many cooldown tiers as you would like, but you should prefix them all with `spawnmini.` to prevent warnings in the server logs.
+* `DefaultFetchCooldown` -- The default spawn cooldown that will apply to players who have not been granted any permissions in `PermissionFetchCooldowns`.
+* `PermissionFetchCooldowns` -- Use these settings to customize fetch cooldowns for different player groups. For example, set `"spawnmini.fetch.tier1": 3600.0` and then grant the `spawnmini.fetch.tier1` permission to a group of players to assign them a 1 hour cooldown for fetching their minicopters.
+  * If a player has multiple cooldown permissions, the lowest is used.
+  * If a player has no cooldown permissions, `DefaultFetchCooldown` will be used for them.
   * You can add as many cooldown tiers as you would like, but you should prefix them all with `spawnmini.` to prevent warnings in the server logs.
 * `SpawnHealth` -- The health minicopters will spawn with.
 * `DestroyOnDisconnect` (`true` or `false`) -- Set to `true` to destroy each spawned minicopter when its owner disconnects from the server. If the minicopter is mounted, it will be destroyed when fully dismounted.
