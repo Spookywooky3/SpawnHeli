@@ -692,7 +692,7 @@ namespace Oxide.Plugins
             public bool ownerOnly = false;
 
             [JsonProperty("DefaultSpawnCooldown")]
-            public float defaultSpawnCooldown = 86400f;
+            public float defaultSpawnCooldown = 3600f;
 
             [JsonProperty("DefaultCooldown")]
             private float deprecatedDefaultSpawnCooldown
@@ -703,9 +703,9 @@ namespace Oxide.Plugins
             [JsonProperty("PermissionSpawnCooldowns", ObjectCreationHandling = ObjectCreationHandling.Replace)]
             public Dictionary<string, float> spawnPermissionCooldowns = new Dictionary<string, float>()
             {
-                ["spawnmini.tier1"] = 43200f,
-                ["spawnmini.tier2"] = 21600f,
-                ["spawnmini.tier3"] = 10800f,
+                ["spawnmini.tier1"] = 600f,
+                ["spawnmini.tier2"] = 300f,
+                ["spawnmini.tier3"] = 60f,
             };
 
             [JsonProperty("PermissionCooldowns")]

@@ -48,11 +48,11 @@ Default configuration:
   "FixedSpawnDistance": 3.0,
   "FixedSpawnRotationAngle": 135.0,
   "OwnerAndTeamCanMount": false,
-  "DefaultSpawnCooldown": 86400.0,
+  "DefaultSpawnCooldown": 3600.0,
   "PermissionSpawnCooldowns": {
-    "spawnmini.tier1": 43200.0,
-    "spawnmini.tier2": 21600.0,
-    "spawnmini.tier3": 10800.0
+    "spawnmini.tier1": 600.0,
+    "spawnmini.tier2": 300.0,
+    "spawnmini.tier3": 60.0
   },
   "DefaultFetchCooldown": 0.0,
   "PermissionFetchCooldowns": {
