@@ -425,6 +425,11 @@ namespace Oxide.Plugins
                     mountPoint.mountable?.DismountAllPlayers();
             }
 
+            if (_config.repairOnFetch)
+            {
+                mini.SetHealth(Math.Max(mini.Health(), _config.spawnHealth));
+            }
+
             mini.rigidBody.velocity = Vector3.zero;
             mini.transform.SetPositionAndRotation(GetFixedPositionForPlayer(player), GetFixedRotationForPlayer(player));
             mini.UpdateNetworkGroup();
@@ -617,6 +622,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("AutoFetch")]
             public bool autoFetch = false;
+
+            [JsonProperty("RepairOnFetch")]
+            public bool repairOnFetch = false;
 
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;

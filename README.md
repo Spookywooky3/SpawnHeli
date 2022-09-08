@@ -39,6 +39,7 @@ Default configuration:
   "CanSpawnBuildingBlocked": false,
   "CanFetchBuildingBlocked": true,
   "AutoFetch": false,
+  "RepairOnFetch": false,
   "FuelAmount": 0,
   "FuelAmountsRequiringPermission": [],
   "MaxNoMiniDistance": -1.0,
@@ -64,6 +65,7 @@ Options explained:
 * `CanSpawnBuildingBlocked` (`true` or `false`) -- Whether to allow players to spawn a minicopter while building blocked.
 * `CanFetchBuildingBlocked` (`true` or `false`) -- Whether to allow players to use `/fmini` while building blocked.
 * `AutoFetch` (`true` or `false`) -- Whether to automatically fetch your existing mini when using the `/mymini` command, if you have the `spawnmini.fmini` permission.
+* `RepairOnFetch` (`true` or `false`) -- Whether to repair the mini when fetched with `/fmini`.
 * `FuelAmount` -- Amount of low grade fuel to add to minicopters when spawned. Set to `-1` for max stack size (which depends on the server, but is 500 in vanilla). Does not apply to minicopters spawned for players who have the `spawnmini.unlimitedfuel` permission.
 * `FuelAmountsRequiringPermission` -- Use this to customize the fuel amount for different player groups. Simply add the desire fuel amounts like `[100, 200]`, and reload the plugin to generate permissions of the format `spawnmini.fuel.<amount>`. Granting one to a player will cause their mini to spawn with that amount of low grade fuel, overriding the default `FuelAmount`. If you grant multiple of these permission to a player, the last will apply, based on the order in the config.
 * `MaxNoMiniDistance` -- The maximum distance players can be from their minicopter to use `/nomini` or `/fmini`. Set to `-1` to allow those commands at unlimited distance.
