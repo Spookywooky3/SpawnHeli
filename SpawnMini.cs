@@ -2,7 +2,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Oxide.Core;
-using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +9,8 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.11.2"), Description("Spawn a mini!")]
+    [Info("Spawn Mini", "SpooksAU", "2.12.0")]
+    [Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
         private SaveData _data;
@@ -36,8 +36,17 @@ namespace Oxide.Plugins
             permission.RegisterPermission(_noFuel, this);
             permission.RegisterPermission(_noDecay, this);
 
-            foreach (var perm in _config.cooldowns)
+            foreach (var perm in _config.spawnPermissionCooldowns)
                 permission.RegisterPermission(perm.Key, this);
+
+            foreach (var perm in _config.fetchPermissionCooldowns)
+            {
+                // Allow server owners to use the same permission for spawn and fetch.
+                if (!permission.PermissionExists(perm.Key))
+                {
+                    permission.RegisterPermission(perm.Key, this);
+                }
+            }
 
             foreach (var fuelAmount in _config.fuelAmountsRequiringPermission)
                 permission.RegisterPermission(GetFuelPermission(fuelAmount), this);
@@ -75,7 +84,8 @@ namespace Oxide.Plugins
         void OnNewSave()
         {
             _data.playerMini.Clear();
-            _data.cooldown.Clear();
+            _data.spawnCooldowns.Clear();
+            _data.fetchCooldowns.Clear();
             WriteSaveData();
         }
 
@@ -185,7 +195,7 @@ namespace Oxide.Plugins
         #region Commands
 
         [ChatCommand("mymini")]
-        private void MyMiniCommand(BasePlayer player, string command, string[] args)
+        private void SpawnCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _spawnMini))
             {
@@ -193,39 +203,32 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (FindPlayerMini(player) != null)
+            var mini = FindPlayerMini(player);
+            if (mini != null)
             {
-                player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
-                return;
-            }
+                if (_config.autoFetch && permission.UserHasPermission(player.UserIDString, _fetchMini))
+                {
+                    FetchInternal(player, mini);
+                }
+                else
+                {
+                    player.ChatMessage(lang.GetMessage("mini_current", this, player.UserIDString));
+                }
 
-            if (IsLocationRestricted(player.transform.position))
-            {
-                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
                 return;
             }
 
             if (SpawnWasBlocked(player))
                 return;
 
-            if (_data.cooldown.ContainsKey(player.UserIDString) && !permission.UserHasPermission(player.UserIDString, _noCooldown))
-            {
-                DateTime lastSpawned = _data.cooldown[player.UserIDString];
-                TimeSpan timeRemaining = CeilingTimeSpan(lastSpawned.AddSeconds(GetPlayerCooldownSeconds(player)) - DateTime.Now);
-                if (timeRemaining.TotalSeconds > 0)
-                {
-                    player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft_new", this, player.UserIDString), timeRemaining.ToString("g")));
-                    return;
-                }
-
-                _data.cooldown.Remove(player.UserIDString);
-            }
+            if (!VerifyOffCooldown(player, _config.spawnPermissionCooldowns, _config.defaultSpawnCooldown, _data.spawnCooldowns))
+                return;
 
             SpawnMinicopter(player);
         }
 
         [ChatCommand("fmini")]
-        private void FetchMinicopter(BasePlayer player, string command, string[] args)
+        private void FetchCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _fetchMini))
             {
@@ -240,46 +243,11 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
-            {
-                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
-                return;
-            }
-
-            bool isMounted = mini.AnyMounted();
-            if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
-            {
-                player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
-                return;
-            }
-
-            if (IsMiniBeyondMaxDistance(player, mini))
-            {
-                player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
-                return;
-            }
-
-            if (IsLocationRestricted(player.transform.position))
-            {
-                player.ChatMessage(lang.GetMessage("mini_location_restricted", this, player.UserIDString));
-                return;
-            }
-
-            if (FetchWasBlocked(player, mini))
-                return;
-
-            if (isMounted)
-            {
-                // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
-                foreach (var mountPoint in mini.mountPoints)
-                    mountPoint.mountable?.DismountAllPlayers();
-            }
-
-            mini.transform.SetPositionAndRotation(GetIdealFixedPositionForPlayer(player), GetIdealRotationForPlayer(player));
+            FetchInternal(player, mini);
         }
 
         [ChatCommand("nomini")]
-        private void NoMinicopter(BasePlayer player, string command, string[] args)
+        private void DespawnCommand(BasePlayer player, string command, string[] args)
         {
             if (!permission.UserHasPermission(player.UserIDString, _noMini))
             {
@@ -294,7 +262,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (mini.AnyMounted() && (!_config.canDespawnWhileOccupied || player.GetMountedVehicle() == mini))
+            if (mini.AnyMounted() && !_config.canDespawnWhileOccupied)
             {
                 player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
                 return;
@@ -356,6 +324,26 @@ namespace Oxide.Plugins
 
         #region Helpers/Functions
 
+        private bool VerifyOffCooldown(BasePlayer player, Dictionary<string, float> cooldownPerms, float defaultCooldown, Dictionary<string, DateTime> cooldownMap)
+        {
+            DateTime cooldownStart;
+            if (!cooldownMap.TryGetValue(player.UserIDString, out cooldownStart) || permission.UserHasPermission(player.UserIDString, _noCooldown))
+            {
+                return true;
+            }
+
+            DateTime lastSpawned = cooldownMap[player.UserIDString];
+            TimeSpan timeRemaining = CeilingTimeSpan(lastSpawned.AddSeconds(GetPlayerCooldownSeconds(player, cooldownPerms, defaultCooldown)) - DateTime.Now);
+            if (timeRemaining.TotalSeconds <= 0)
+            {
+                cooldownMap.Remove(player.UserIDString);
+                return true;
+            }
+
+            player.ChatMessage(string.Format(lang.GetMessage("mini_timeleft_new", this, player.UserIDString), timeRemaining.ToString("g")));
+            return false;
+        }
+
         private bool SpawnWasBlocked(BasePlayer player)
         {
             object hookResult = Interface.CallHook("OnMyMiniSpawn", player);
@@ -377,24 +365,18 @@ namespace Oxide.Plugins
         private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
             new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
 
-        private bool IsLocationRestricted(Vector3 position)
-        {
-            // Disallow spawning in underground train tunnels
-            return position.y < -100;
-        }
-
         private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
 
-        private Vector3 GetIdealFixedPositionForPlayer(BasePlayer player)
+        private Vector3 GetFixedPositionForPlayer(BasePlayer player)
         {
             Vector3 forward = player.GetNetworkRotation() * Vector3.forward;
             forward.y = 0;
-            return player.transform.position + forward.normalized * 3f + Vector3.up * 2f;
+            return player.transform.position + forward.normalized * _config.fixedSpawnDistance + Vector3.up * 2f;
         }
 
-        private Quaternion GetIdealRotationForPlayer(BasePlayer player) =>
-            Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - 135, 0);
+        private Quaternion GetFixedRotationForPlayer(BasePlayer player) =>
+            Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - _config.fixedSpawnRotationAngle, 0);
 
         private MiniCopter FindPlayerMini(BasePlayer player)
         {
@@ -414,6 +396,56 @@ namespace Oxide.Plugins
             return mini;
         }
 
+        private void FetchInternal(BasePlayer player, MiniCopter mini)
+        {
+            if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
+            {
+                player.ChatMessage(lang.GetMessage("mini_buildingblocked", this, player.UserIDString));
+                return;
+            }
+
+            bool isMounted = mini.AnyMounted();
+            if (isMounted && (!_config.canFetchWhileOccupied || player.GetMountedVehicle() == mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_mounted", this, player.UserIDString));
+                return;
+            }
+
+            if (IsMiniBeyondMaxDistance(player, mini))
+            {
+                player.ChatMessage(lang.GetMessage("mini_current_distance", this, player.UserIDString));
+                return;
+            }
+
+            if (FetchWasBlocked(player, mini))
+                return;
+
+            if (!VerifyOffCooldown(player, _config.fetchPermissionCooldowns, _config.defaultFetchCooldown, _data.fetchCooldowns))
+                return;
+
+            if (isMounted)
+            {
+                // mini.DismountAllPlayers() doesn't work so we have to enumerate the mount points
+                foreach (var mountPoint in mini.mountPoints)
+                    mountPoint.mountable?.DismountAllPlayers();
+            }
+
+            if (_config.repairOnFetch)
+            {
+                mini.SetHealth(Math.Max(mini.Health(), _config.spawnHealth));
+            }
+
+            mini.rigidBody.velocity = Vector3.zero;
+            mini.transform.SetPositionAndRotation(GetFixedPositionForPlayer(player), GetFixedRotationForPlayer(player));
+            mini.UpdateNetworkGroup();
+            mini.SendNetworkUpdateImmediate();
+
+            if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
+            {
+                _data.fetchCooldowns[player.UserIDString] = DateTime.Now;
+            }
+        }
+
         private void SpawnMinicopter(BasePlayer player)
         {
             if (!_config.canSpawnBuildingBlocked && player.IsBuildingBlocked())
@@ -426,7 +458,7 @@ namespace Oxide.Plugins
 
             if (_config.useFixedSpawnDistance)
             {
-                position = GetIdealFixedPositionForPlayer(player);
+                position = GetFixedPositionForPlayer(player);
             }
             else
             {
@@ -447,7 +479,7 @@ namespace Oxide.Plugins
                 position = hit.point + Vector3.up * 2f;
             }
 
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetIdealRotationForPlayer(player)) as MiniCopter;
+            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetFixedRotationForPlayer(player)) as MiniCopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
@@ -464,7 +496,7 @@ namespace Oxide.Plugins
 
             if (!permission.UserHasPermission(player.UserIDString, _noCooldown))
             {
-                _data.cooldown.Add(player.UserIDString, DateTime.Now);
+                _data.spawnCooldowns[player.UserIDString] = DateTime.Now;
             }
         }
 
@@ -476,8 +508,8 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var position = useCustomPosition ? customPosition : GetIdealFixedPositionForPlayer(player);
-            var rotation = useCustomPosition ? Quaternion.identity : GetIdealRotationForPlayer(player);
+            var position = useCustomPosition ? customPosition : GetFixedPositionForPlayer(player);
+            var rotation = useCustomPosition ? Quaternion.identity : GetFixedRotationForPlayer(player);
 
             MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, rotation) as MiniCopter;
             if (mini == null) return;
@@ -493,13 +525,14 @@ namespace Oxide.Plugins
                 AddInitialFuel(mini, player.UserIDString);
         }
 
-        private float GetPlayerCooldownSeconds(BasePlayer player)
+        private float GetPlayerCooldownSeconds(BasePlayer player, Dictionary<string, float> cooldownPerms, float defaultCooldown)
         {
-            var grantedCooldownPerms = _config.cooldowns
+            var grantedCooldownPerms = cooldownPerms
                 .Where(entry => permission.UserHasPermission(player.UserIDString, entry.Key));
 
-            // Default cooldown to 1 day if they don't have any specific permissions
-            return grantedCooldownPerms.Any() ? grantedCooldownPerms.Min(entry => entry.Value) : _config.defaultCooldown;
+            return grantedCooldownPerms.Any()
+                ? grantedCooldownPerms.Min(entry => entry.Value)
+                : defaultCooldown;
         }
 
         private void AddInitialFuel(MiniCopter minicopter, string userId)
@@ -577,8 +610,20 @@ namespace Oxide.Plugins
 
         class SaveData
         {
+            [JsonProperty("playerMini")]
             public Dictionary<string, uint> playerMini = new Dictionary<string, uint>();
-            public Dictionary<string, DateTime> cooldown = new Dictionary<string, DateTime>();
+
+            [JsonProperty("spawnCooldowns")]
+            public Dictionary<string, DateTime> spawnCooldowns = new Dictionary<string, DateTime>();
+
+            [JsonProperty("cooldown")]
+            private Dictionary<string, DateTime> deprecatedCooldown
+            {
+                set { spawnCooldowns = value; }
+            }
+
+            [JsonProperty("fetchCooldowns")]
+            public Dictionary<string, DateTime> fetchCooldowns = new Dictionary<string, DateTime>();
         }
 
         class PluginConfig : SerializableConfiguration
@@ -598,6 +643,12 @@ namespace Oxide.Plugins
             [JsonProperty("CanFetchBuildingBlocked")]
             public bool canFetchBuildlingBlocked = true;
 
+            [JsonProperty("AutoFetch")]
+            public bool autoFetch = false;
+
+            [JsonProperty("RepairOnFetch")]
+            public bool repairOnFetch = false;
+
             [JsonProperty("FuelAmount")]
             public int fuelAmount = 0;
 
@@ -613,18 +664,47 @@ namespace Oxide.Plugins
             [JsonProperty("UseFixedSpawnDistance")]
             public bool useFixedSpawnDistance = true;
 
+            [JsonProperty("FixedSpawnDistance")]
+            public float fixedSpawnDistance = 3;
+
+            [JsonProperty("FixedSpawnRotationAngle")]
+            public float fixedSpawnRotationAngle = 135;
+
             [JsonProperty("OwnerAndTeamCanMount")]
             public bool ownerOnly = false;
 
+            [JsonProperty("DefaultSpawnCooldown")]
+            public float defaultSpawnCooldown = 3600f;
+
             [JsonProperty("DefaultCooldown")]
-            public float defaultCooldown = 86400f;
+            private float deprecatedDefaultSpawnCooldown
+            {
+                set { defaultSpawnCooldown = value; }
+            }
+
+            [JsonProperty("PermissionSpawnCooldowns", ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public Dictionary<string, float> spawnPermissionCooldowns = new Dictionary<string, float>()
+            {
+                ["spawnmini.tier1"] = 600f,
+                ["spawnmini.tier2"] = 300f,
+                ["spawnmini.tier3"] = 60f,
+            };
 
             [JsonProperty("PermissionCooldowns")]
-            public Dictionary<string, float> cooldowns = new Dictionary<string, float>()
+            private Dictionary<string, float> deprecatedSpawnPermissionCooldowns
             {
-                ["spawnmini.tier1"] = 43200f,
-                ["spawnmini.tier2"] = 21600f,
-                ["spawnmini.tier3"] = 10800f,
+                set { spawnPermissionCooldowns = value; }
+            }
+
+            [JsonProperty("DefaultFetchCooldown")]
+            public float defaultFetchCooldown = 0;
+
+            [JsonProperty("PermissionFetchCooldowns", ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public Dictionary<string, float> fetchPermissionCooldowns = new Dictionary<string, float>()
+            {
+                ["spawnmini.fetch.tier1"] = 600f,
+                ["spawnmini.fetch.tier2"] = 300f,
+                ["spawnmini.fetch.tier3"] = 60f,
             };
 
             [JsonProperty("SpawnHealth")]
@@ -778,8 +858,9 @@ namespace Oxide.Plugins
                     SaveConfig();
                 }
             }
-            catch
+            catch (Exception e)
             {
+                PrintError(e.Message);
                 PrintWarning($"Configuration file {Name}.json is invalid; using defaults");
                 LoadDefaultConfig();
             }
