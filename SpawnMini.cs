@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 using Oxide.Core;
 using System;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.12.1")]
+    [Info("Spawn Mini", "SpooksAU", "2.12.2")]
     [Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
@@ -68,7 +67,7 @@ namespace Oxide.Plugins
 
         void OnServerInitialized()
         {
-            foreach (var mini in BaseNetworkable.serverEntities.OfType<MiniCopter>())
+            foreach (var mini in BaseNetworkable.serverEntities.OfType<Minicopter>())
             {
                 if (IsPlayerOwned(mini) && mini.OwnerID != 0 && permission.UserHasPermission(mini.OwnerID.ToString(), _noFuel))
                 {
@@ -89,7 +88,7 @@ namespace Oxide.Plugins
             WriteSaveData();
         }
 
-        void OnEntityKill(MiniCopter mini)
+        void OnEntityKill(Minicopter mini)
         {
             if (_data.playerMini.ContainsValue(mini.net.ID.Value))
             {
@@ -123,7 +122,7 @@ namespace Oxide.Plugins
             if (player == null || entity == null)
                 return null;
 
-            var mini = entity.GetParentEntity() as MiniCopter;
+            var mini = entity.GetParentEntity() as Minicopter;
             if (mini == null || mini is ScrapTransportHelicopter || mini.OwnerID == 0 || !IsPlayerOwned(mini)) return null;
 
             if (mini.OwnerID != player.userID)
@@ -146,7 +145,7 @@ namespace Oxide.Plugins
             if (!_data.playerMini.TryGetValue(player.UserIDString, out miniNetId))
                 return;
 
-            var mini = BaseNetworkable.serverEntities.Find(new NetworkableId(miniNetId)) as MiniCopter;
+            var mini = BaseNetworkable.serverEntities.Find(new NetworkableId(miniNetId)) as Minicopter;
             if (mini == null)
                 return;
 
@@ -167,7 +166,7 @@ namespace Oxide.Plugins
             if (seat == null)
                 return;
 
-            var mini = seat.GetParentEntity() as MiniCopter;
+            var mini = seat.GetParentEntity() as Minicopter;
             if (mini == null || mini.OwnerID == 0 || !IsPlayerOwned(mini) || mini.AnyMounted())
                 return;
 
@@ -182,7 +181,7 @@ namespace Oxide.Plugins
             if (container == null || !container.IsLocked())
                 return;
 
-            var mini = container.GetParentEntity() as MiniCopter;
+            var mini = container.GetParentEntity() as Minicopter;
             if (mini == null || !IsPlayerOwned(mini))
                 return;
 
@@ -350,13 +349,13 @@ namespace Oxide.Plugins
             return hookResult is bool && (bool)hookResult == false;
         }
 
-        private bool FetchWasBlocked(BasePlayer player, MiniCopter mini)
+        private bool FetchWasBlocked(BasePlayer player, Minicopter mini)
         {
             object hookResult = Interface.CallHook("OnMyMiniFetch", player, mini);
             return hookResult is bool && (bool)hookResult == false;
         }
 
-        private bool DespawnWasBlocked(BasePlayer player, MiniCopter mini)
+        private bool DespawnWasBlocked(BasePlayer player, Minicopter mini)
         {
             object hookResult = Interface.CallHook("OnMyMiniDespawn", player, mini);
             return hookResult is bool && (bool)hookResult == false;
@@ -365,7 +364,7 @@ namespace Oxide.Plugins
         private TimeSpan CeilingTimeSpan(TimeSpan timeSpan) =>
             new TimeSpan((long)Math.Ceiling(1.0 * timeSpan.Ticks / 10000000) * 10000000);
 
-        private bool IsMiniBeyondMaxDistance(BasePlayer player, MiniCopter mini) =>
+        private bool IsMiniBeyondMaxDistance(BasePlayer player, Minicopter mini) =>
             _config.noMiniDistance >= 0 && GetDistance(player, mini) > _config.noMiniDistance;
 
         private Vector3 GetFixedPositionForPlayer(BasePlayer player)
@@ -378,13 +377,13 @@ namespace Oxide.Plugins
         private Quaternion GetFixedRotationForPlayer(BasePlayer player) =>
             Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - _config.fixedSpawnRotationAngle, 0);
 
-        private MiniCopter FindPlayerMini(BasePlayer player)
+        private Minicopter FindPlayerMini(BasePlayer player)
         {
             ulong miniNetId;
             if (!_data.playerMini.TryGetValue(player.UserIDString, out miniNetId))
                 return null;
 
-            var mini = BaseNetworkable.serverEntities.Find(new NetworkableId(miniNetId)) as MiniCopter;
+            var mini = BaseNetworkable.serverEntities.Find(new NetworkableId(miniNetId)) as Minicopter;
 
             // Fix a potential data file desync where the mini doesn't exist anymore
             // Desyncs should be rare but are not possible to 100% prevent
@@ -396,7 +395,7 @@ namespace Oxide.Plugins
             return mini;
         }
 
-        private void FetchInternal(BasePlayer player, MiniCopter mini)
+        private void FetchInternal(BasePlayer player, Minicopter mini)
         {
             if (!_config.canFetchBuildlingBlocked && player.IsBuildingBlocked())
             {
@@ -479,7 +478,7 @@ namespace Oxide.Plugins
                 position = hit.point + Vector3.up * 2f;
             }
 
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetFixedRotationForPlayer(player)) as MiniCopter;
+            Minicopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, GetFixedRotationForPlayer(player)) as Minicopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
@@ -511,7 +510,7 @@ namespace Oxide.Plugins
             var position = useCustomPosition ? customPosition : GetFixedPositionForPlayer(player);
             var rotation = useCustomPosition ? Quaternion.identity : GetFixedRotationForPlayer(player);
 
-            MiniCopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, rotation) as MiniCopter;
+            Minicopter mini = GameManager.server.CreateEntity(_config.assetPrefab, position, rotation) as Minicopter;
             if (mini == null) return;
 
             mini.OwnerID = player.userID;
@@ -535,7 +534,7 @@ namespace Oxide.Plugins
                 : defaultCooldown;
         }
 
-        private void AddInitialFuel(MiniCopter minicopter, string userId)
+        private void AddInitialFuel(Minicopter minicopter, string userId)
         {
             var fuelAmount = GetPlayerAllowedFuel(userId);
             if (fuelAmount == 0)
@@ -550,7 +549,7 @@ namespace Oxide.Plugins
             fuelContainer.inventory.AddItem(fuelContainer.allowedItem, fuelAmount);
         }
 
-        private void EnableUnlimitedFuel(MiniCopter minicopter)
+        private void EnableUnlimitedFuel(Minicopter minicopter)
         {
             var fuelSystem = minicopter.GetFuelSystem();
             fuelSystem.cachedHasFuel = true;
@@ -558,13 +557,13 @@ namespace Oxide.Plugins
             fuelSystem.GetFuelContainer().SetFlag(BaseEntity.Flags.Locked, true);
         }
 
-        private float GetDistance(BasePlayer player, MiniCopter mini)
+        private float GetDistance(BasePlayer player, Minicopter mini)
         {
             float distance = Vector3.Distance(player.transform.position, mini.transform.position);
             return distance;
         }
 
-        private bool IsPlayerOwned(MiniCopter mini)
+        private bool IsPlayerOwned(Minicopter mini)
         {
             if (mini != null && _data.playerMini.ContainsValue(mini.net.ID.Value))
                 return true;
