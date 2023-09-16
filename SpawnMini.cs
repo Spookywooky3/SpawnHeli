@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Mini", "SpooksAU", "2.12.2")]
+    [Info("Spawn Mini", "SpooksAU", "2.12.3")]
     [Description("Spawn a mini!")]
     class SpawnMini : RustPlugin
     {
@@ -138,6 +138,10 @@ namespace Oxide.Plugins
 
         void OnPlayerDisconnected(BasePlayer player)
         {
+            // Temporary workaround for OnPlayerDisconnected not subscribing to Oxide issue.
+            if (!_config.destroyOnDisconnect)
+                return;
+
             if (player == null)
                 return;
 
