@@ -284,6 +284,27 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (_config.LimitPlayersToOneHelicopterType)
+            {
+                foreach (var otherVehicleInfo in _vehicleInfoManager.AllVehicles)
+                {
+                    if (otherVehicleInfo == vehicleInfo)
+                        continue;
+
+                    var otherVehicle = otherVehicleInfo.Data.GetVehicle(player.Id);
+                    if (otherVehicle == null || otherVehicle.IsDestroyed)
+                        continue;
+
+                    if (!TryDespawnHeli(otherVehicleInfo, otherVehicle, basePlayer))
+                    {
+                        player.Reply(GetMessage(player.Id, LangEntry.ErrorConflictingHeli));
+                        return;
+                    }
+
+                    otherVehicle.Kill();
+                }
+            }
+
             Vector3 position;
             Quaternion rotation;
             if (!VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.SpawnCooldowns, vehicleInfo.Data.SpawnCooldowns)
@@ -733,6 +754,20 @@ namespace Oxide.Plugins
             SpawnVehicle(vehicleInfo, player, position, rotation);
         }
 
+        private bool TryDespawnHeli(VehicleInfo vehicleInfo, PlayerHelicopter heli, BasePlayer basePlayer)
+        {
+            if (!_config.AutoDespawnOtherHelicopterTypes)
+                return false;
+
+            if (!vehicleInfo.Config.CanDespawnWhileOccupied && IsHeliOccupied(heli))
+                return false;
+
+            if (DespawnWasBlocked(vehicleInfo, basePlayer, heli))
+                return false;
+
+            return true;
+        }
+
         private float GetPlayerCooldownSeconds(CooldownConfig cooldownConfig, BasePlayer player)
         {
             var profileList = cooldownConfig.CooldownProfiles;
@@ -891,13 +926,13 @@ namespace Oxide.Plugins
             public VehicleInfo Minicopter { get; private set; }
             public VehicleInfo ScrapTransportHelicopter { get; private set; }
             public VehicleInfo AttackHelicopter { get; private set; }
+            public VehicleInfo[] AllVehicles { get; private set; }
 
             private readonly SpawnHeli _plugin;
             private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new Dictionary<uint, VehicleInfo>();
-            private VehicleInfo[] _allVehicles;
 
-            public bool AnyOwnerOnly => _allVehicles.Any(vehicleInfo => vehicleInfo.Config.OnlyOwnerAndTeamCanMount);
-            public bool AnyDespawnOnDisconnect => _allVehicles.Any(vehicleInfo => vehicleInfo.Config.DespawnOnDisconnect);
+            public bool AnyOwnerOnly => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.OnlyOwnerAndTeamCanMount);
+            public bool AnyDespawnOnDisconnect => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.DespawnOnDisconnect);
 
             private Configuration _config => _plugin._config;
             private SaveData _data => _plugin._data;
@@ -909,7 +944,7 @@ namespace Oxide.Plugins
 
             public void Init()
             {
-                _allVehicles = new[]
+                AllVehicles = new[]
                 {
                     Minicopter = new VehicleInfo
                     {
@@ -985,7 +1020,7 @@ namespace Oxide.Plugins
                     },
                 };
 
-                foreach (var vehicleInfo in _allVehicles)
+                foreach (var vehicleInfo in AllVehicles)
                 {
                     vehicleInfo.Init(_plugin);
                 }
@@ -1008,7 +1043,7 @@ namespace Oxide.Plugins
 
             public void OnServerInitialized()
             {
-                foreach (var vehicleInfo in _allVehicles)
+                foreach (var vehicleInfo in AllVehicles)
                 {
                     vehicleInfo.OnServerInitialized();
 
@@ -1437,6 +1472,12 @@ namespace Oxide.Plugins
         [JsonObject(MemberSerialization.OptIn)]
         private class Configuration : SerializableConfiguration
         {
+            [JsonProperty("Limit players to one helicopter type at a time")]
+            public bool LimitPlayersToOneHelicopterType;
+
+            [JsonProperty("Try to auto despawn other helicopter types")]
+            public bool AutoDespawnOtherHelicopterTypes;
+
             [JsonProperty("Minicopter")]
             public VehicleConfig Minicopter = new VehicleConfig
             {
@@ -1824,6 +1865,10 @@ namespace Oxide.Plugins
             public static readonly LangEntry InsufficientSpace = new LangEntry("error_insufficient_space", new Dictionary<Lang, string>
             {
                 [Lang.en] = "Not enough space.",
+            });
+            public static readonly LangEntry ErrorConflictingHeli = new LangEntry("error_conflicting_heli", new Dictionary<Lang, string>
+            {
+                [Lang.en] = "You must first destroy your other helicopter(s) before you can spawn a new one.",
             });
 
             public static readonly LangEntry ErrorSpawnDistance = new LangEntry("error_spawn_distance", new Dictionary<Lang, string>

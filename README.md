@@ -203,6 +203,8 @@ Default configuration:
 
 ```json
 {
+  "Limit players to one helicopter type at a time": false,
+  "Try to auto despawn other helicopter types": false,
   "Minicopter": {
     "Spawn commands": [
       "mymini"
@@ -443,7 +445,13 @@ Default configuration:
 }
 ```
 
-Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelicopter`) have the following options.
+The following options are global, not tied to a specific helicopter type.
+
+- `Limit players to one helicopter type at a time` (`true` or `false`) -- Determines whether each player must first destroy their other helicopter(s) before they can spawn a new one. For example, while `true`, a player with a Minicopter will not be able to spawn an Attack Helicopter or Scrap Transport Helicopter until the Minicopter is destroyed.
+- `Try to auto despawn other helicopter types`  (`true` or `false`) -- Determines whether attempting to spawn a helicopter will automatically try to despawn the player's other helicopter(s). For example, while `true`, when a player with a Minicopter attempts to spawn an Attack Helicopter, their existing Minicopter will be automatically despawned if possible. In some cases, despawning the existing helicopter is not possible (e.g., if that helicopter is occupied, and despawning that helicopter type while occupied is disallowed according to the plugin configuration), in which case the player will simply be informed that they must first destroy their existing helicopter(s).
+  - Note: This option only takes effect while `Limit players to one helicopter type at a time` is also `true`.
+
+Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelicopter`) has the following options.
 
 - `Spawn commands` -- Determines which commands can be used to spawn the heli.
 - `Fetch commands` -- Determines which commands can be used to fetch the heli.
