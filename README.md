@@ -482,9 +482,9 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
   - `Cooldown profiles requiring permission` -- Use this section to customize spawn cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.spawn.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
     - `Cooldown (seconds)`
     - `Permission suffix` -- Determines the permission generated, like `spawnheli.<heli-type>.cooldown.spawn.<suffix>`. -- Determines the number of seconds the player must wait after spawning their helicopter before they can spawn it again.
-- `Fetch cooldowns` -- Spawn cooldowns determine how often players can fetch their helicopter.
-  - `Default cooldown (seconds)` -- The default spawn cooldown applies to players who have not been granted any permissions in `Cooldown profiles requiring permission`.
-  - `Cooldown profiles requiring permission` -- Use this section to customize spawn cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.fetch.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
+- `Fetch cooldowns` -- Fetch cooldowns determine how often players can fetch their helicopter.
+  - `Default cooldown (seconds)` -- The default fetch cooldown applies to players who have not been granted any permissions in `Cooldown profiles requiring permission`.
+  - `Cooldown profiles requiring permission` -- Use this section to customize fetch cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.fetch.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
     - `Cooldown (seconds)` -- Determines the number of seconds the player must wait after fetching their helicopter before they can fetch it again.
     - `Permission suffix` -- Determines the permission generated, like `spawnheli.<heli-type>.cooldown.fetch.<suffix>`.
 
