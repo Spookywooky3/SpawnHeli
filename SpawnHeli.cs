@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Heli", "SpooksAU", "3.0.0")]
+    [Info("Spawn Heli", "SpooksAU", "3.0.1")]
     [Description("Allows players to spawn helicopters")]
     internal class SpawnHeli : CovalencePlugin
     {
@@ -150,7 +150,10 @@ namespace Oxide.Plugins
 
             VehicleInfo vehicleInfo;
             var heli = mountPoint.GetParentEntity() as PlayerHelicopter;
-            if (heli == null || heli.OwnerID == 0 || !IsPlayerVehicle(heli, out vehicleInfo))
+            if (heli == null
+                || heli.OwnerID == 0
+                || !IsPlayerVehicle(heli, out vehicleInfo)
+                || !vehicleInfo.Config.OnlyOwnerAndTeamCanMount)
                 return null;
 
             // Vehicle owner is allowed to mount.
