@@ -6,6 +6,8 @@
 - Allows preventing decay damage to personal helicopters
 - Allows spawning personal helicopters with configurable fuel
 - Allows personal helicopters to function without fuel
+- Allows personal helicopters to be auto mounted when spawned or fetched
+- Allows personal helicopters to takeoff instantly
 - Allows configuring multiple spawn/fetch/despawn commands
 - Allows automatically fetching helicopters, as well as optionally repairing them, when using the spawn command, to simplify the experience for players
 
@@ -51,11 +53,13 @@ All of the plugin permission have been renamed. Here are the highlights.
 ### Basic permissions
 
 Allow the player to spawn a helicopter (e.g., `/mymini`, `/myheli`, `/myattack`):
+- `spawnheli.all.spawn`
 - `spawnheli.minicopter.spawn`
 - `spawnheli.scraptransport.spawn`
 - `spawnheli.attackhelicopter.spawn`
 
 Allow the player to fetch their existing helicopter (e.g,. `/fmini`, `/fheli`, `/fattack`):
+- `spawnheli.all.fetch`
 - `spawnheli.minicopter.fetch`
 - `spawnheli.scraptransport.fetch`
 - `spawnheli.attackhelicopter.fetch`
@@ -63,26 +67,42 @@ Allow the player to fetch their existing helicopter (e.g,. `/fmini`, `/fheli`, `
 Note: The fetch permissions are required to make the spawn command fetch the player's existing helicopter when using the `"Auto fetch": true` configuration option.
 
 Allow the player to despawn their existing helicopter (e.g., `/nomini`, `/noheli`, `/noattack`):
+- `spawnheli.all.despawn`
 - `spawnheli.minicopter.despawn`
 - `spawnheli.scraptransport.despawn`
 - `spawnheli.attackhelicopter.despawn`
 
 Allow the player's helicopter to function without fuel:
+- `spawnheli.all.unlimitedfuel`
 - `spawnheli.minicopter.unlimitedfuel`
 - `spawnheli.scraptransport.unlimitedfuel`
 - `spawnheli.attackhelicopter.unlimitedfuel`
 
 Disable decay damage to the player's helicopter:
+- `spawnheli.all.nodecay`
 - `spawnheli.minicopter.nodecay`
 - `spawnheli.scraptransport.nodecay`
 - `spawnheli.attackhelicopter.nodecay`
 
 Allow the player to spawn their helicopter as often as they would like:
+- `spawnheli.all.nocooldown`
 - `spawnheli.minicopter.nocooldown`
 - `spawnheli.scraptransport.nocooldown`
 - `spawnheli.attackhelicopter.nocooldown`
 
 **Caution:** Allowing helicopters to be respawned too frequently could be abused by players to reduce server performance. Alternatively, you can rely on the default cooldown configuration option, and/or grant non-zero cooldowns using permissions (see below).
+
+Allow the player to auto mount their helicopter when spawning or fetching it (requires feature to be enabled in the config, and permissions are only necessary if configured to require permission):
+- `spawnheli.all.automount`
+- `spawnheli.minicopter.automount`
+- `spawnheli.scraptransport.automount`
+- `spawnheli.attackhelicopter.automount`
+
+Allow the player's helicopter to takeoff instantly, bypassing engine startup time (requires feature to be enabled in the config, and permissions are only necessary if configured to require permission):
+- `spawnheli.all.instanttakeoff`
+- `spawnheli.minicopter.instanttakeoff`
+- `spawnheli.scraptransport.instanttakeoff`
+- `spawnheli.attackhelicopter.instanttakeoff`
 
 ### Fuel permissions
 
@@ -203,6 +223,7 @@ Default configuration:
 
 ```json
 {
+  "Admin debug bounds": false,
   "Limit players to one helicopter type at a time": false,
   "Try to auto despawn other helicopter types": false,
   "Minicopter": {
@@ -228,6 +249,14 @@ Default configuration:
       "Enabled": true,
       "Distance from player": 3.0,
       "Helicopter rotation angle": 90.0
+    },
+    "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
+    },
+    "Instant takeoff": {
+      "Enabled": false,
+      "Require permission": false
     },
     "Only owner and team can mount": false,
     "Spawn health": 750.0,
@@ -308,6 +337,14 @@ Default configuration:
       "Distance from player": 3.0,
       "Helicopter rotation angle": 90.0
     },
+    "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
+    },
+    "Instant takeoff": {
+      "Enabled": false,
+      "Require permission": false
+    },
     "Only owner and team can mount": false,
     "Spawn health": 1000.0,
     "Destroy on disconnect": false,
@@ -387,6 +424,14 @@ Default configuration:
       "Distance from player": 3.0,
       "Helicopter rotation angle": 90.0
     },
+    "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
+    },
+    "Instant takeoff": {
+      "Enabled": false,
+      "Require permission": false
+    },
     "Only owner and team can mount": false,
     "Spawn health": 850.0,
     "Destroy on disconnect": false,
@@ -447,6 +492,7 @@ Default configuration:
 
 The following options are global, not tied to a specific helicopter type.
 
+- `Admin debug bounds` (`true` or `false`) -- Determines whether to display visual bounding boxes when an admin attempts to spawn a helicopter. The bounding boxes are only visible to the admin who attempted to spawn the helicopter. This can be useful when debugging "Not enough space" messages.
 - `Limit players to one helicopter type at a time` (`true` or `false`) -- Determines whether each player must first destroy their other helicopter(s) before they can spawn a new one. For example, while `true`, a player with a Minicopter will not be able to spawn an Attack Helicopter or Scrap Transport Helicopter until the Minicopter is destroyed.
 - `Try to auto despawn other helicopter types`  (`true` or `false`) -- Determines whether attempting to spawn a helicopter will automatically try to despawn the player's other helicopter(s). For example, while `true`, when a player with a Minicopter attempts to spawn an Attack Helicopter, their existing Minicopter will be automatically despawned if possible. In some cases, despawning the existing helicopter is not possible (e.g., if that helicopter is occupied, and despawning that helicopter type while occupied is disallowed according to the plugin configuration), in which case the player will simply be informed that they must first destroy their existing helicopter(s).
   - Note: This option only takes effect while `Limit players to one helicopter type at a time` is also `true`.
@@ -469,6 +515,12 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
   - `Enabled` (`true` or `false`) -- Determines whether fixed spawn distance is enabled.
   - `Distance from player` -- Determines how far away from the player the helicopter will be spawned.
   - `Helicopter rotation angle` -- Determines how the helicopter will be rotated relative to the player when spawned or fetched.
+- `Auto mount` -- When enabled, spawning or fetching a helicopter will automatically mount the owner player to the pilot seat. Note: Giving a player a helicopter using admin/server commands will skip auto mount.
+  - `Enabled` (`true` or `false`) -- Determines whether auto mount is enabled.
+  - `Require permission` (`true` or `false`) -- Determines whether players need permission for the auto mount feature.
+- `Instant takeoff` -- When enabled, helicopters spawned by this plugin can takeoff instantly, bypassing engine startup time.
+  - `Enabled` (`true` or `false`) -- Determines whether instant takeoff is enabled.
+  - `Require permission` (`true` or `false`) -- Determines whether the owner of the helicopter needs permission for this feature to work.
 - `Only owner and team can mount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the helicopter.
 - `Destroy on disconnect` (`true` or `false`) -- Determines whether player helicopters will be despawned when the owner disconnects from the server. Note: If a player is mounted to the helicopter when the owner disconnects, the despawn will be delayed until no more players are mounted to the it.
 - `Fuel` -- Determines how much fuel helicopters will spawn with. Note: Fuel configuration does not apply to players that have the unlimited fuel permission.
@@ -482,9 +534,9 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
   - `Cooldown profiles requiring permission` -- Use this section to customize spawn cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.spawn.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
     - `Cooldown (seconds)`
     - `Permission suffix` -- Determines the permission generated, like `spawnheli.<heli-type>.cooldown.spawn.<suffix>`. -- Determines the number of seconds the player must wait after spawning their helicopter before they can spawn it again.
-- `Fetch cooldowns` -- Spawn cooldowns determine how often players can fetch their helicopter.
-  - `Default cooldown (seconds)` -- The default spawn cooldown applies to players who have not been granted any permissions in `Cooldown profiles requiring permission`.
-  - `Cooldown profiles requiring permission` -- Use this section to customize spawn cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.fetch.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
+- `Fetch cooldowns` -- Fetch cooldowns determine how often players can fetch their helicopter.
+  - `Default cooldown (seconds)` -- The default fetch cooldown applies to players who have not been granted any permissions in `Cooldown profiles requiring permission`.
+  - `Cooldown profiles requiring permission` -- Use this section to customize fetch cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.fetch.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
     - `Cooldown (seconds)` -- Determines the number of seconds the player must wait after fetching their helicopter before they can fetch it again.
     - `Permission suffix` -- Determines the permission generated, like `spawnheli.<heli-type>.cooldown.fetch.<suffix>`.
 
